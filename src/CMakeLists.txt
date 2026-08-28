@@ -1,0 +1,37 @@
+file(GLOB_RECURSE RHI_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/vulkan/*.cpp
+)
+file(GLOB_RECURSE RHI_HEADERS CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/include/*.hpp
+    ${CMAKE_SOURCE_DIR}/include/*.h
+)
+
+if(RHI_BUILD_SHARED)
+    add_library(rhi SHARED ${RHI_SOURCES} ${RHI_HEADERS})
+else()
+    add_library(rhi STATIC ${RHI_SOURCES} ${RHI_HEADERS})
+endif()
+
+add_dependencies(rhi rhi_shaders)
+
+target_include_directories(rhi
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_link_libraries(rhi PUBLIC Vulkan::Vulkan)
+
+if(RHI_ENABLE_VALIDATION)
+    target_compile_definitions(rhi PRIVATE
+        $<$<CONFIG:Debug>:RHI_ENABLE_VALIDATION_LAYERS>
+    )
+endif()
+
+target_compile_options(rhi PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
+    $<$<CONFIG:Debug>:-g -Og>
+    $<$<CONFIG:Release>:-O3>
+)
