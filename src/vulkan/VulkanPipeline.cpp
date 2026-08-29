@@ -2,6 +2,7 @@
 #include "VulkanRenderPass.h"
 #include "VulkanFormat.h"
 #include "VulkanResult.h"
+#include "VulkanDescriptorSetLayout.h"
 #include <vector>
 
 namespace ASH::vulkan
@@ -22,10 +23,45 @@ VkShaderModule createShaderModule(VkDevice device, const ASH::ShaderStageDesc& s
     return module;
 }
 
-VkPipelineLayout createEmptyPipelineLayout(VkDevice device)
+VkPipelineLayout createPipelineLayout(VkDevice device,
+    const std::vector<ASH::DescriptorSetLayout*>& descriptorSetLayouts,
+    const std::vector<ASH::PushConstantRange>& pushConstantRanges)
 {
+    std::vector<VkDescriptorSetLayout> vkLayouts;
+    vkLayouts.reserve(descriptorSetLayouts.size());
+
+    for (ASH::DescriptorSetLayout* layout : descriptorSetLayouts)
+    {
+        auto* vulkanLayout = static_cast<VulkanDescriptorSetLayout*>(layout);
+        vkLayouts.push_back(vulkanLayout->getHandle());
+    }
+
+    std::vector<VkPushConstantRange> vkRanges;
+    vkRanges.reserve(pushConstantRanges.size());
+
+    for (const auto& range : pushConstantRanges)
+    {
+        VkShaderStageFlags stageFlags = 0;
+        if (hasFlag(range.stageFlags, ASH::ShaderStage::Vertex))      stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+        if (hasFlag(range.stageFlags, ASH::ShaderStage::Fragment))    stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        if (hasFlag(range.stageFlags, ASH::ShaderStage::Compute))     stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
+        if (hasFlag(range.stageFlags, ASH::ShaderStage::Geometry))    stageFlags |= VK_SHADER_STAGE_GEOMETRY_BIT;
+        if (hasFlag(range.stageFlags, ASH::ShaderStage::TessControl)) stageFlags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+        if (hasFlag(range.stageFlags, ASH::ShaderStage::TessEval))    stageFlags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+
+        VkPushConstantRange vkRange{};
+        vkRange.stageFlags = stageFlags;
+        vkRange.offset     = range.offset;
+        vkRange.size       = range.size;
+        vkRanges.push_back(vkRange);
+    }
+ 
     VkPipelineLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layoutInfo.setLayoutCount         = static_cast<uint32_t>(vkLayouts.size());
+    layoutInfo.pSetLayouts            = vkLayouts.data();
+    layoutInfo.pushConstantRangeCount = static_cast<uint32_t>(vkRanges.size());
+    layoutInfo.pPushConstantRanges    = vkRanges.data();
 
     VkPipelineLayout layout = VK_NULL_HANDLE;
     VK_CHECK(vkCreatePipelineLayout(device, &layoutInfo, nullptr, &layout), "vkCreatePipelineLayout");
@@ -141,7 +177,7 @@ VulkanPipeline::VulkanPipeline(VkDevice device, const ASH::GraphicsPipelineDesc&
     dynamicState.dynamicStateCount = 2;
     dynamicState.pDynamicStates = dynamicStates;
 
-    m_layout = createEmptyPipelineLayout(m_device);
+    m_layout = createPipelineLayout(m_device, desc.descriptorSetLayouts, desc.pushConstantRanges);
 
     auto* vulkanRenderPass = static_cast<VulkanRenderPass*>(desc.renderPass);
 
@@ -184,7 +220,7 @@ VulkanPipeline::VulkanPipeline(VkDevice device, const ASH::ComputePipelineDesc& 
     stageInfo.module = module;
     stageInfo.pName = desc.stage.entryPoint;
 
-    m_layout = createEmptyPipelineLayout(m_device);
+    m_layout = createPipelineLayout(m_device, desc.descriptorSetLayouts, desc.pushConstantRanges);
 
     VkComputePipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;

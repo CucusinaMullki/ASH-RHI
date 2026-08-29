@@ -2,10 +2,13 @@
 #include "VulkanBuffer.h"
 #include "VulkanTexture.h"
 #include "VulkanRenderPass.h"
-#include "VulkanSwapChain.h"
-#include "VulkanCommandBuffer.h"
 #include "VulkanFramebuffer.h"
 #include "VulkanPipeline.h"
+#include "VulkanDescriptorSetLayout.h"
+#include "VulkanDescriptorSet.h"
+#include "VulkanSwapChain.h"
+#include "VulkanCommandBuffer.h"
+#include "VulkanSampler.h"
 #include "VulkanResult.h"
 
 #include <cstdio>
@@ -94,17 +97,44 @@ VulkanDevice::VulkanDevice(bool enableValidation, const std::vector<const char*>
     createInstance(enableValidation, requiredExtensions);
     selectPhysicalDevice();
     createLogicalDevice();
-    createCommandPool();
+    createDescriptorPool();
+}
+
+void VulkanDevice::createDescriptorPool()
+{
+    std::vector<VkDescriptorPoolSize> poolSizes = {
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100 },
+        { VK_DESCRIPTOR_TYPE_SAMPLER, 100 },
+    };
+
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    poolInfo.maxSets = 100;
+    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    poolInfo.pPoolSizes = poolSizes.data();
+
+    VK_CHECK(vkCreateDescriptorPool(m_device, &poolInfo, nullptr, &m_descriptorPool), "vkCreateDescriptorPool");
 }
 
 VulkanDevice::~VulkanDevice()
 {
-    if (m_device != VK_NULL_HANDLE) 
+    if (m_device != VK_NULL_HANDLE)
     {
         vkDeviceWaitIdle(m_device);
     }
 
-    if (m_commandPool != VK_NULL_HANDLE) vkDestroyCommandPool(m_device, m_commandPool, nullptr);
+    if (m_descriptorPool != VK_NULL_HANDLE) vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
+
+    for (auto& [threadId, pool] : m_commandPools)
+    {
+        if (pool != VK_NULL_HANDLE) vkDestroyCommandPool(m_device, pool, nullptr);
+    }
+
     if (m_device != VK_NULL_HANDLE) vkDestroyDevice(m_device, nullptr);
 
     if (m_debugMessenger != VK_NULL_HANDLE) destroyDebugMessenger(m_instance, m_debugMessenger);
@@ -211,14 +241,27 @@ void VulkanDevice::createLogicalDevice() {
     vkGetDeviceQueue(m_device, m_graphicsQueueFamily, 0, &m_graphicsQueue);
 }
 
-void VulkanDevice::createCommandPool() 
+VkCommandPool VulkanDevice::getOrCreateCommandPool()
 {
+    std::thread::id thisThread = std::this_thread::get_id();
+    std::lock_guard<std::mutex> lock(m_commandPoolMutex);
+
+    auto it = m_commandPools.find(thisThread);
+    if (it != m_commandPools.end())
+    {
+        return it->second;
+    }
+
     VkCommandPoolCreateInfo poolInfo{};
-    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     poolInfo.queueFamilyIndex = m_graphicsQueueFamily;
 
-    VK_CHECK(vkCreateCommandPool(m_device, &poolInfo, nullptr, &m_commandPool), "vkCreateCommandPool");
+    VkCommandPool pool = VK_NULL_HANDLE;
+    VK_CHECK(vkCreateCommandPool(m_device, &poolInfo, nullptr, &pool), "vkCreateCommandPool");
+
+    m_commandPools[thisThread] = pool;
+    return pool;
 }
 
 void VulkanDevice::attachSurface(VkSurfaceKHR surface) 
@@ -263,9 +306,10 @@ std::unique_ptr<ASH::SwapChain> VulkanDevice::createSwapChain(const ASH::SwapCha
     return std::make_unique<VulkanSwapChain>(m_device, m_physicalDevice, m_surface, m_graphicsQueueFamily, desc);
 }
 
-std::unique_ptr<ASH::CommandBuffer> VulkanDevice::createCommandBuffer() 
+std::unique_ptr<ASH::CommandBuffer> VulkanDevice::createCommandBuffer()
 {
-    return std::make_unique<VulkanCommandBuffer>(m_device, m_commandPool);
+    VkCommandPool pool = getOrCreateCommandPool();
+    return std::make_unique<VulkanCommandBuffer>(m_device, pool);
 }
 
 void VulkanDevice::submit(ASH::CommandBuffer* commandBuffer) 
@@ -286,4 +330,19 @@ void VulkanDevice::waitIdle()
     vkDeviceWaitIdle(m_device);
 }
 
+std::unique_ptr<ASH::Sampler> VulkanDevice::createSampler(const ASH::SamplerDesc& desc)
+{
+    return std::make_unique<VulkanSampler>(m_device, desc);
+}
+
+std::unique_ptr<ASH::DescriptorSetLayout> VulkanDevice::createDescriptorSetLayout(const ASH::DescriptorSetLayoutDesc& desc)
+{
+    return std::make_unique<VulkanDescriptorSetLayout>(m_device, desc);
+}
+
+std::unique_ptr<ASH::DescriptorSet> VulkanDevice::createDescriptorSet(ASH::DescriptorSetLayout* layout)
+{
+    auto* vulkanLayout = static_cast<VulkanDescriptorSetLayout*>(layout);
+    return std::make_unique<VulkanDescriptorSet>(m_device, m_descriptorPool, vulkanLayout->getHandle());
+}
 }

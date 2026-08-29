@@ -11,6 +11,7 @@ class Pipeline;
 class Buffer;
 class Texture;
 class RenderPass;
+class DescriptorSet;
 class Framebuffer;
 
 struct RenderPassBeginInfo
@@ -51,6 +52,7 @@ public:
     virtual void endRenderPass() = 0;
 
     virtual void bindPipeline(Pipeline* pipeline) = 0;
+    virtual void bindDescriptorSet(Pipeline* pipeline, uint32_t setIndex, DescriptorSet* set) = 0;
     virtual void bindVertexBuffer(Buffer* buffer, uint32_t binding, uint64_t offset) = 0;
     virtual void bindIndexBuffer(Buffer* buffer, uint64_t offset, IndexType indexType) = 0;
 
@@ -66,6 +68,8 @@ public:
     virtual void copyBuffer(Buffer* src, Buffer* dst, size_t size, size_t srcOffset, size_t dstOffset) = 0;
 
     virtual void copyBufferToTexture(Buffer* src, Texture* dst) = 0;
+
+    virtual void pushConstants(Pipeline* pipeline, ShaderStage stages, uint32_t offset, uint32_t size, const void* data) = 0;
 
     virtual void barrier(const TextureBarrier* textureBarriers, uint32_t textureBarrierCount, const BufferBarrier* bufferBarriers, uint32_t bufferBarrierCount) = 0;
 

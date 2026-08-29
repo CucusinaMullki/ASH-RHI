@@ -21,6 +21,13 @@ class Pipeline;
 class SwapChain;
 class CommandBuffer;
 
+struct DescriptorSetLayoutDesc;
+struct SamplerDesc;
+
+class DescriptorSetLayout;
+class DescriptorSet;
+class Sampler;
+
 class Device
 {
 public:
@@ -37,6 +44,9 @@ public:
     virtual std::unique_ptr<Pipeline> createComputePipeline(const ComputePipelineDesc& desc) = 0;
     virtual std::unique_ptr<SwapChain> createSwapChain(const SwapChainDesc& desc) =0 ;
     virtual std::unique_ptr<CommandBuffer> createCommandBuffer() = 0;
+    virtual std::unique_ptr<DescriptorSetLayout> createDescriptorSetLayout(const DescriptorSetLayoutDesc& desc) = 0;
+    virtual std::unique_ptr<DescriptorSet> createDescriptorSet(DescriptorSetLayout* layout) = 0;
+    virtual std::unique_ptr<Sampler> createSampler(const SamplerDesc& desc) = 0;
 
     virtual void submit(CommandBuffer* CommandBuffer) = 0;
     virtual void waitIdle() = 0;

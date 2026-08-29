@@ -141,18 +141,27 @@ constexpr bool hasFlag(TextureUsage value, TextureUsage flag)
 
 enum class ShaderStage : uint32_t
 {
-    None = 0,
-    Vertex = 1u << 0,
-    Fragment = 1u << 1,
-    Compute = 1u << 2,
-    Geometry = 1u << 3,
+    None        = 0,
+    Vertex      = 1u << 0,
+    Fragment    = 1u << 1,
+    Compute     = 1u << 2,
+    Geometry    = 1u << 3,
     TessControl = 1u << 4,
-    TessEval = 1u << 5,
+    TessEval    = 1u << 5,
 };
 
 constexpr ShaderStage operator|(ShaderStage a, ShaderStage b)
 {
     return static_cast<ShaderStage>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+}
+
+constexpr ShaderStage operator&(ShaderStage a, ShaderStage b)
+{
+    return static_cast<ShaderStage>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
+}
+constexpr bool hasFlag(ShaderStage value, ShaderStage flag)
+{
+    return (value & flag) == flag;
 }
 
 enum class MemoryUsage : uint8_t

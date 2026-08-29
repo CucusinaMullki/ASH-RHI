@@ -18,7 +18,7 @@ struct AttachmentDesc
 
 struct RenderPassDesc
 {
-    std::vector<AttachmentDesc> colorAttachment;
+    std::vector<AttachmentDesc> colorAttachments;
     bool hasDepthStencil = false;
     AttachmentDesc depthStencilAttachment;
 };

@@ -12,7 +12,6 @@ else()
     add_library(rhi STATIC ${RHI_SOURCES} ${RHI_HEADERS})
 endif()
 
-add_dependencies(rhi rhi_shaders)
 
 target_include_directories(rhi
     PUBLIC

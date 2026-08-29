@@ -4,10 +4,14 @@
 #include <cstddef>
 #include <vector>
 
+class DescriptorSetLayout;
+
 namespace ASH
 {
 
 class RenderPass;
+class DescriptorSetLayout;
+
 //--------------
 // Shader module
 //--------------
@@ -84,6 +88,13 @@ struct ColorBlendState
 // Pipelines descriptions
 //-----------------------
 
+struct PushConstantRange
+{
+    ShaderStage stageFlags = ShaderStage::None;
+    uint32_t offset = 0;
+    uint32_t size = 0;
+};
+
 struct GraphicsPipelineDesc
 {
     std::vector<ShaderStageDesc> stages;
@@ -93,12 +104,16 @@ struct GraphicsPipelineDesc
     DepthStencilState depthStencil;
     ColorBlendState colorBlend;
     RenderPass* renderPass = nullptr;
+    std::vector<DescriptorSetLayout*> descriptorSetLayouts;
+    std::vector<PushConstantRange> pushConstantRanges;
     const char* debugName = nullptr;
 };
 
 struct ComputePipelineDesc
 {
     ShaderStageDesc stage;
+    std::vector<DescriptorSetLayout*> descriptorSetLayouts;
+    std::vector<PushConstantRange> pushConstantRanges;
     const char* debugName = nullptr;
 };
 

@@ -286,4 +286,47 @@ bool isStencilFormat(ASH::Format format)
     }
 }
 
+namespace
+{
+    VkPipelineStageFlags stageForState(ASH::ResourceState state)
+    {
+        switch (state)
+        {
+            case ASH::ResourceState::Undefined:             return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            case ASH::ResourceState::ColorAttachment:        return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            case ASH::ResourceState::DepthStencilAttachment: return VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+            case ASH::ResourceState::ShaderReadOnly:         return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            case ASH::ResourceState::TransferSrc:            return VK_PIPELINE_STAGE_TRANSFER_BIT;
+            case ASH::ResourceState::TransferDst:            return VK_PIPELINE_STAGE_TRANSFER_BIT;
+            case ASH::ResourceState::Present:                return VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        }
+        return VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    }
+
+    VkAccessFlags accessForState(ASH::ResourceState state)
+    {
+        switch (state)
+        {
+            case ASH::ResourceState::Undefined: return 0;
+            case ASH::ResourceState::ColorAttachment: return VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            case ASH::ResourceState::DepthStencilAttachment: return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            case ASH::ResourceState::ShaderReadOnly: return VK_ACCESS_SHADER_READ_BIT;
+            case ASH::ResourceState::TransferSrc: return VK_ACCESS_TRANSFER_READ_BIT;
+            case ASH::ResourceState::TransferDst: return VK_ACCESS_TRANSFER_WRITE_BIT;
+            case ASH::ResourceState::Present: return 0;
+        }
+        return VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+    }
+}
+
+    BarrierMasks toBarrierMasks(ASH::ResourceState oldState, ASH::ResourceState newState)
+    {
+        BarrierMasks masks{};
+        masks.srcStage  = stageForState(oldState);
+        masks.dstStage  = stageForState(newState);
+        masks.srcAccess = accessForState(oldState);
+        masks.dstAccess = accessForState(newState);
+        return masks;
+    }
+
 }

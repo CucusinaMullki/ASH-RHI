@@ -36,9 +36,9 @@ VulkanRenderPass::VulkanRenderPass(VkDevice device, const ASH::RenderPassDesc& d
 
     std::vector<VkAttachmentReference> colorRefs;
 
-    for (size_t i = 0; i < desc.colorAttachment.size(); ++i)
+    for (size_t i = 0; i < desc.colorAttachments.size(); ++i)
     {
-        attachments.push_back(toAttachmentDescription(desc.colorAttachment[i],
+        attachments.push_back(toAttachmentDescription(desc.colorAttachments[i],
             VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
 
         VkAttachmentReference ref{};

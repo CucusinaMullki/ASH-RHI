@@ -15,35 +15,6 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 find_package(Vulkan REQUIRED)
-find_program(GLSLC_EXECUTABLE glslc REQUIRED)
-
-file(GLOB_RECURSE RHI_SHADER_SOURCES
-    ${CMAKE_SOURCE_DIR}/shaders/*.vert
-    ${CMAKE_SOURCE_DIR}/shaders/*.frag
-    ${CMAKE_SOURCE_DIR}/shaders/*.comp
-    ${CMAKE_SOURCE_DIR}/shaders/*.geom
-    ${CMAKE_SOURCE_DIR}/shaders/*.tesc
-    ${CMAKE_SOURCE_DIR}/shaders/*.tese
-)
-
-set(RHI_SHADER_OUTPUT_DIR ${CMAKE_BINARY_DIR}/shaders)
-file(MAKE_DIRECTORY ${RHI_SHADER_OUTPUT_DIR})
-
-set(RHI_COMPILED_SHADERS "")
-foreach(SHADER ${RHI_SHADER_SOURCES})
-    get_filename_component(SHADER_NAME ${SHADER} NAME)
-    set(SPIRV ${RHI_SHADER_OUTPUT_DIR}/${SHADER_NAME}.spv)
-    add_custom_command(
-        OUTPUT ${SPIRV}
-        COMMAND ${GLSLC_EXECUTABLE} ${SHADER} -o ${SPIRV}
-        DEPENDS ${SHADER}
-        COMMENT "Shader compilation ${SHADER_NAME}"
-        VERBATIM
-    )
-    list(APPEND RHI_COMPILED_SHADERS ${SPIRV})
-endforeach()
-
-add_custom_target(rhi_shaders DEPENDS ${RHI_COMPILED_SHADERS})
 
 add_subdirectory(src)
 

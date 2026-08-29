@@ -12,9 +12,9 @@ VulkanFramebuffer::VulkanFramebuffer(VkDevice device, const ASH::FramebufferDesc
     , m_extent(desc.extent)
 {
     std::vector<VkImageView> attachments;
-    attachments.reserve(desc.colorAttachment.size() + 1);
+    attachments.reserve(desc.colorAttachments.size() + 1);
 
-    for (ASH::Texture* colorTexture : desc.colorAttachment)
+    for (ASH::Texture* colorTexture : desc.colorAttachments)
     {
         auto* vulkanTexture = static_cast<VulkanTexture*>(colorTexture);
         attachments.push_back(vulkanTexture->getImageView());

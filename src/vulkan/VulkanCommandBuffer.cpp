@@ -2,6 +2,7 @@
 #include "VulkanBuffer.h"
 #include "VulkanTexture.h"
 #include "VulkanRenderPass.h"
+#include "VulkanDescriptorSet.h"
 #include "VulkanFramebuffer.h"
 #include "VulkanPipeline.h"
 #include "VulkanFormat.h"
@@ -39,6 +40,21 @@ VkImageAspectFlags aspectMaskFor(const ASH::TextureDesc& desc)
     return mask;
 }
 
+}
+
+void VulkanCommandBuffer::pushConstants(ASH::Pipeline* pipeline, ASH::ShaderStage stages, uint32_t offset, uint32_t size, const void* data)
+{
+    auto* vulkanPipeline = static_cast<VulkanPipeline*>(pipeline);
+
+    VkShaderStageFlags vkStages = 0;
+    if (hasFlag(stages, ASH::ShaderStage::Vertex)) vkStages |= VK_SHADER_STAGE_VERTEX_BIT;
+    if (hasFlag(stages, ASH::ShaderStage::Fragment)) vkStages |= VK_SHADER_STAGE_FRAGMENT_BIT;
+    if (hasFlag(stages, ASH::ShaderStage::Compute)) vkStages |= VK_SHADER_STAGE_COMPUTE_BIT;
+    if (hasFlag(stages, ASH::ShaderStage::Geometry)) vkStages |= VK_SHADER_STAGE_GEOMETRY_BIT;
+    if (hasFlag(stages, ASH::ShaderStage::TessControl)) vkStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+    if (hasFlag(stages, ASH::ShaderStage::TessEval)) vkStages |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+
+    vkCmdPushConstants(m_commandBuffer, vulkanPipeline->getLayout(), vkStages, offset, size, data);
 }
 
 VulkanCommandBuffer::VulkanCommandBuffer(VkDevice device, VkCommandPool commandPool)
@@ -191,6 +207,23 @@ void VulkanCommandBuffer::copyBuffer(ASH::Buffer* src, ASH::Buffer* dst, size_t 
     vkCmdCopyBuffer(m_commandBuffer, vulkanSrc->getHandle(), vulkanDst->getHandle(), 1, &region);
 }
 
+void VulkanCommandBuffer::bindDescriptorSet(ASH::Pipeline* pipeline, uint32_t setIndex, ASH::DescriptorSet* set) {
+    auto* vulkanPipeline = static_cast<VulkanPipeline*>(pipeline);
+    auto* vulkanSet       = static_cast<VulkanDescriptorSet*>(set);
+
+    VkDescriptorSet handle = vulkanSet->getHandle();
+
+    vkCmdBindDescriptorSets(
+        m_commandBuffer,
+        toBindPoint(pipeline->getType()),
+        vulkanPipeline->getLayout(),
+        setIndex,
+        1,
+        &handle,
+        0, nullptr
+    );
+}
+
 void VulkanCommandBuffer::copyBufferToTexture(ASH::Buffer* src, ASH::Texture* dst)
 {
     auto* vulkanSrc = static_cast<VulkanBuffer*>(src);
@@ -215,15 +248,25 @@ void VulkanCommandBuffer::barrier(const ASH::TextureBarrier* textureBarriers, ui
     std::vector<VkImageMemoryBarrier> imageBarriers;
     imageBarriers.reserve(textureBarrierCount);
 
-    for (uint32_t i = 0; i < textureBarrierCount; ++i) {
+    VkPipelineStageFlags combinedSrcStage = 0;
+    VkPipelineStageFlags combinedDstStage = 0;
+
+    for (uint32_t i = 0; i < textureBarrierCount; ++i)
+    {
         const ASH::TextureBarrier& b = textureBarriers[i];
         auto* vulkanTexture = static_cast<VulkanTexture*>(b.texture);
         const ASH::TextureDesc& desc = vulkanTexture->getDesc();
+
+        BarrierMasks masks = toBarrierMasks(b.oldState, b.newState);
+        combinedSrcStage |= masks.srcStage;
+        combinedDstStage |= masks.dstStage;
 
         VkImageMemoryBarrier imageBarrier{};
         imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         imageBarrier.oldLayout = toVkImageLayout(b.oldState);
         imageBarrier.newLayout = toVkImageLayout(b.newState);
+        imageBarrier.srcAccessMask = masks.srcAccess;
+        imageBarrier.dstAccessMask = masks.dstAccess;
         imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         imageBarrier.image = vulkanTexture->getImage();
@@ -239,15 +282,17 @@ void VulkanCommandBuffer::barrier(const ASH::TextureBarrier* textureBarriers, ui
     (void)bufferBarriers;
     (void)bufferBarrierCount;
 
+    if (combinedSrcStage == 0) combinedSrcStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    if (combinedDstStage == 0) combinedDstStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+
     vkCmdPipelineBarrier(
         m_commandBuffer,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        combinedSrcStage,
+        combinedDstStage,
         0,
         0, nullptr,
         0, nullptr,
         static_cast<uint32_t>(imageBarriers.size()), imageBarriers.data()
     );
 }
-
 }

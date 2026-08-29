@@ -12,7 +12,7 @@ class Texture;
 struct FramebufferDesc
 {
     RenderPass* renderPass = nullptr;
-    std::vector<Texture*> colorAttachment;
+    std::vector<Texture*> colorAttachments;
     Texture* depthStencilAttachment = nullptr;
     Extent2D extent{};
     uint32_t layers = 1;

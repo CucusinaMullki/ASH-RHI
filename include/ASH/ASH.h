@@ -8,4 +8,7 @@
 #include "ASH/Pipeline.h"
 #include "ASH/SwapChain.h"
 #include "ASH/CommandBuffer.h"
+#include "ASH/Buffer.h"
 #include "ASH/Device.h"
+#include "ASH/Sampler.h"
+#include "ASH/Descriptor.h"
