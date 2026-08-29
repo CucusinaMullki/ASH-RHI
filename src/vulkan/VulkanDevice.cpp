@@ -97,6 +97,7 @@ VulkanDevice::VulkanDevice(bool enableValidation, const std::vector<const char*>
     createInstance(enableValidation, requiredExtensions);
     selectPhysicalDevice();
     createLogicalDevice();
+    m_memoryAllocator = std::make_unique<VulkanMemoryAllocator>(m_device, m_physicalDevice);
     createDescriptorPool();
 }
 
@@ -134,6 +135,8 @@ VulkanDevice::~VulkanDevice()
     {
         if (pool != VK_NULL_HANDLE) vkDestroyCommandPool(m_device, pool, nullptr);
     }
+
+    m_memoryAllocator.reset();
 
     if (m_device != VK_NULL_HANDLE) vkDestroyDevice(m_device, nullptr);
 
@@ -269,14 +272,9 @@ void VulkanDevice::attachSurface(VkSurfaceKHR surface)
     m_surface = surface;
 }
 
-std::unique_ptr<ASH::Buffer> VulkanDevice::createBuffer(const ASH::BufferDesc& desc) 
+std::unique_ptr<ASH::Texture> VulkanDevice::createTexture(const ASH::TextureDesc& desc)
 {
-    return std::make_unique<VulkanBuffer>(m_device, m_physicalDevice, desc);
-}
-
-std::unique_ptr<ASH::Texture> VulkanDevice::createTexture(const ASH::TextureDesc& desc) 
-{
-    return std::make_unique<VulkanTexture>(m_device, m_physicalDevice, desc);
+    return std::make_unique<VulkanTexture>(m_device, m_memoryAllocator.get(), desc);
 }
 
 std::unique_ptr<ASH::RenderPass> VulkanDevice::createRenderPass(const ASH::RenderPassDesc& desc)
@@ -306,10 +304,9 @@ std::unique_ptr<ASH::SwapChain> VulkanDevice::createSwapChain(const ASH::SwapCha
     return std::make_unique<VulkanSwapChain>(m_device, m_physicalDevice, m_surface, m_graphicsQueueFamily, desc);
 }
 
-std::unique_ptr<ASH::CommandBuffer> VulkanDevice::createCommandBuffer()
+std::unique_ptr<ASH::Buffer> VulkanDevice::createBuffer(const ASH::BufferDesc& desc)
 {
-    VkCommandPool pool = getOrCreateCommandPool();
-    return std::make_unique<VulkanCommandBuffer>(m_device, pool);
+    return std::make_unique<VulkanBuffer>(m_device, m_memoryAllocator.get(), desc);
 }
 
 void VulkanDevice::submit(ASH::CommandBuffer* commandBuffer) 
@@ -345,4 +342,11 @@ std::unique_ptr<ASH::DescriptorSet> VulkanDevice::createDescriptorSet(ASH::Descr
     auto* vulkanLayout = static_cast<VulkanDescriptorSetLayout*>(layout);
     return std::make_unique<VulkanDescriptorSet>(m_device, m_descriptorPool, vulkanLayout->getHandle());
 }
+
+std::unique_ptr<ASH::CommandBuffer> VulkanDevice::createCommandBuffer()
+{
+    VkCommandPool pool = getOrCreateCommandPool();
+    return std::make_unique<VulkanCommandBuffer>(m_device, pool);
+}
+
 }

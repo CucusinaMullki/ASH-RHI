@@ -1,13 +1,12 @@
 #include "VulkanTexture.h"
 #include "VulkanFormat.h"
-#include "VulkanMemory.h"
 #include "VulkanResult.h"
 
-namespace ASH::vulkan
-{
+namespace ASH::vulkan {
 
-VulkanTexture::VulkanTexture(VkDevice device, VkPhysicalDevice physicalDevice, const ASH::TextureDesc& desc)
+VulkanTexture::VulkanTexture(VkDevice device, VulkanMemoryAllocator* allocator, const ASH::TextureDesc& desc)
     : m_device(device)
+    , m_allocator(allocator)
     , m_desc(desc)
 {
     VkImageCreateInfo imageInfo{};
@@ -33,20 +32,16 @@ VulkanTexture::VulkanTexture(VkDevice device, VkPhysicalDevice physicalDevice, c
     VkMemoryRequirements memRequirements{};
     vkGetImageMemoryRequirements(m_device, m_image, &memRequirements);
 
-    VkMemoryAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(physicalDevice, memRequirements.memoryTypeBits,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    m_allocation = m_allocator->allocate(memRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    VK_CHECK(vkAllocateMemory(m_device, &allocInfo, nullptr, &m_memory), "vkAllocateMemory (image)");
-    VK_CHECK(vkBindImageMemory(m_device, m_image, m_memory, 0), "vkBindImageMemory");
+    VK_CHECK(vkBindImageMemory(m_device, m_image, m_allocation.memory, m_allocation.offset), "vkBindImageMemory");
 
     createImageView();
 }
 
 VulkanTexture::VulkanTexture(VkDevice device, VkImage externalImage, const ASH::TextureDesc& desc)
     : m_device(device)
+    , m_allocator(nullptr)
     , m_image(externalImage)
     , m_desc(desc)
     , m_ownsImage(false)
@@ -58,7 +53,11 @@ VulkanTexture::~VulkanTexture()
 {
     if (m_imageView != VK_NULL_HANDLE) vkDestroyImageView(m_device, m_imageView, nullptr);
     if (m_ownsImage && m_image != VK_NULL_HANDLE) vkDestroyImage(m_device, m_image, nullptr);
-    if (m_memory != VK_NULL_HANDLE) vkFreeMemory(m_device, m_memory, nullptr);
+
+    if (m_allocator != nullptr)
+    {
+        m_allocator->free(m_allocation);
+    }
 }
 
 void VulkanTexture::createImageView()
@@ -88,4 +87,4 @@ void VulkanTexture::createImageView()
     VK_CHECK(vkCreateImageView(m_device, &viewInfo, nullptr, &m_imageView), "vkCreateImageView");
 }
 
-} // namespace ASH::vulkan
+}

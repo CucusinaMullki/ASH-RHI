@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ASH/Device.h"
+#include "VulkanMemoryAllocator.h"
 #include <vulkan/vulkan.h>
 #include <cstdint>
 #include <vector>
@@ -40,6 +41,7 @@ public:
     VkQueue getGraphicsQueue() const { return m_graphicsQueue; }
     uint32_t getGraphicsQueueFamily() const { return m_graphicsQueueFamily; }
     VkDescriptorPool getDescriptorPool() const { return m_descriptorPool; }
+    VulkanMemoryAllocator* getMemoryAllocator() const { return m_memoryAllocator.get(); }
 
 private:
     void createInstance(bool enableValidation, const std::vector<const char*>& requiredExtensions);
@@ -62,6 +64,8 @@ private:
     std::mutex m_commandPoolMutex;
     std::unordered_map<std::thread::id, VkCommandPool> m_commandPools;
 
+    std::unique_ptr<VulkanMemoryAllocator> m_memoryAllocator;
+    
     bool validationEnabled_ = false;
 };
 
