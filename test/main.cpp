@@ -40,17 +40,14 @@ Mat4 rotationZ(float angleRadians) {
     float c = std::cos(angleRadians);
     float s = std::sin(angleRadians);
 
-    // clang-format off
     return Mat4{{
          c,    s,    0.0f, 0.0f,
         -s,    c,    0.0f, 0.0f,
          0.0f, 0.0f, 1.0f, 0.0f,
          0.0f, 0.0f, 0.0f, 1.0f
     }};
-    // clang-format on
 }
 
-// Простая процедурная текстура — шахматная доска, RGBA8.
 std::vector<uint8_t> generateCheckerboardPixels(uint32_t width, uint32_t height) {
     std::vector<uint8_t> pixels(width * height * 4);
 
@@ -69,7 +66,7 @@ std::vector<uint8_t> generateCheckerboardPixels(uint32_t width, uint32_t height)
     return pixels;
 }
 
-} // namespace
+}
 
 int main() {
     if (!glfwInit()) {
@@ -121,6 +118,20 @@ int main() {
                     swapChain->getExtent().width,
                     swapChain->getExtent().height);
 
+        
+
+        ASH::TextureDesc depthTextureDesc{};
+        depthTextureDesc.type = ASH::TextureType::Texture2D;
+        depthTextureDesc.format = ASH::Format::D32_Float;
+        depthTextureDesc.extent = { swapChain->getExtent().width, swapChain->getExtent().height };
+        depthTextureDesc.mipLevels = 1;
+        depthTextureDesc.arrayLayers = 1;
+        depthTextureDesc.usage = ASH::TextureUsage::DepthStencilAttachment;
+
+        auto depthTexture = device.createTexture(depthTextureDesc);
+        std::printf("Depth texture created: %ux%u\n",
+            depthTextureDesc.extent.width, depthTextureDesc.extent.height);
+
         // --- RenderPass ---
         ASH::AttachmentDesc colorAttachment{};
         colorAttachment.format         = swapChainDesc.format;
@@ -130,9 +141,18 @@ int main() {
         colorAttachment.stencilLoadOp  = ASH::LoadOp::DontCare;
         colorAttachment.stencilStoreOp = ASH::StoreOp::DontCare;
 
+        ASH::AttachmentDesc depthAttachment;
+        depthAttachment.format = depthTextureDesc.format;
+        depthAttachment.sampleCount = 1;
+        depthAttachment.loadOp = ASH::LoadOp::Clear;
+        depthAttachment.storeOp = ASH::StoreOp::Store;
+        depthAttachment.stencilLoadOp  = ASH::LoadOp::DontCare;
+        depthAttachment.stencilStoreOp = ASH::StoreOp::DontCare;
+
         ASH::RenderPassDesc renderPassDesc{};
         renderPassDesc.colorAttachments = { colorAttachment };
-        renderPassDesc.hasDepthStencil  = false;
+        renderPassDesc.hasDepthStencil  = true;
+        renderPassDesc.depthStencilAttachment = depthAttachment;
 
         auto renderPass = device.createRenderPass(renderPassDesc);
         std::printf("RenderPass created.\n");
@@ -144,7 +164,7 @@ int main() {
             ASH::FramebufferDesc fbDesc{};
             fbDesc.renderPass             = renderPass.get();
             fbDesc.colorAttachments       = { swapChain->getImage(i) };
-            fbDesc.depthStencilAttachment = nullptr;
+            fbDesc.depthStencilAttachment = depthTexture.get();
             fbDesc.extent                 = swapChain->getExtent();
             fbDesc.layers                 = 1;
             framebuffers.push_back(device.createFramebuffer(fbDesc));
@@ -162,13 +182,22 @@ int main() {
             device.waitIdle();
             vulkanSwapChain->resize({ static_cast<uint32_t>(width), static_cast<uint32_t>(height) });
 
+            ASH::TextureDesc newDepthDesc{};
+            newDepthDesc.type = ASH::TextureType::Texture2D;
+            newDepthDesc.usage = ASH::TextureUsage::DepthStencilAttachment;
+            newDepthDesc.format = ASH::Format::D32_Float;
+            newDepthDesc.arrayLayers = 1;
+            newDepthDesc.mipLevels = 1;
+            newDepthDesc.extent = { swapChain->getExtent().width, swapChain->getExtent().height };
+            depthTexture = device.createTexture(newDepthDesc);
+
             framebuffers.clear();
             framebuffers.reserve(swapChain->getImageCount());
             for (uint32_t i = 0; i < swapChain->getImageCount(); ++i) {
                 ASH::FramebufferDesc fbDesc{};
                 fbDesc.renderPass             = renderPass.get();
                 fbDesc.colorAttachments       = { swapChain->getImage(i) };
-                fbDesc.depthStencilAttachment = nullptr;
+                fbDesc.depthStencilAttachment = depthTexture.get();
                 fbDesc.extent                 = swapChain->getExtent();
                 fbDesc.layers                 = 1;
                 framebuffers.push_back(device.createFramebuffer(fbDesc));
@@ -321,8 +350,9 @@ int main() {
         pipelineDesc.rasterization.cullMode  = ASH::CullMode::None;
         pipelineDesc.rasterization.frontFace = ASH::FrontFace::CounterClockwise;
         pipelineDesc.rasterization.lineWidth = 1.0f;
-        pipelineDesc.depthStencil.depthTestEnable  = false;
-        pipelineDesc.depthStencil.depthWriteEnable = false;
+        pipelineDesc.depthStencil.depthTestEnable  = true;
+        pipelineDesc.depthStencil.depthWriteEnable = true;
+        pipelineDesc.depthStencil.depthCompareOp = ASH::CompareOp::Less;
 
         ASH::ColorBlendAttachmentState blendAttachment{};
         blendAttachment.blendEnable = false;
@@ -372,13 +402,17 @@ int main() {
             clearColor.f32[2] = 0.05f;
             clearColor.f32[3] = 1.0f;
 
+            ASH::ClearDepthStencil clearDepth{};
+            clearDepth.depth = 1.0f;
+            clearDepth.stencil = 0;
+
             ASH::RenderPassBeginInfo rpBegin{};
             rpBegin.renderPass  = renderPass.get();
             rpBegin.framebuffer = framebuffers[imageIndex].get();
             rpBegin.renderArea  = { 0, 0, swapChain->getExtent().width, swapChain->getExtent().height };
             rpBegin.colorClearValues = &clearColor;
             rpBegin.colorClearCount  = 1;
-            rpBegin.depthStencilClear = nullptr;
+            rpBegin.depthStencilClear = &clearDepth;
 
             commandBuffer->beginRenderPass(rpBegin);
             commandBuffer->bindPipeline(pipeline.get());
