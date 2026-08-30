@@ -99,6 +99,11 @@ VulkanDevice::VulkanDevice(bool enableValidation, const std::vector<const char*>
     createLogicalDevice();
     m_memoryAllocator = std::make_unique<VulkanMemoryAllocator>(m_device, m_physicalDevice);
     createDescriptorPool();
+
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    VK_CHECK(vkCreateFence(m_device, &fenceInfo, nullptr, &m_deviceLostCheckFence), "vkCreateFence (device lost check)");
 }
 
 void VulkanDevice::createDescriptorPool()
@@ -129,6 +134,7 @@ VulkanDevice::~VulkanDevice()
         vkDeviceWaitIdle(m_device);
     }
 
+    if (m_deviceLostCheckFence != VK_NULL_HANDLE) vkDestroyFence(m_device, m_deviceLostCheckFence, nullptr);
     if (m_descriptorPool != VK_NULL_HANDLE) vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
 
     for (auto& [threadId, pool] : m_commandPools)
@@ -143,6 +149,12 @@ VulkanDevice::~VulkanDevice()
     if (m_debugMessenger != VK_NULL_HANDLE) destroyDebugMessenger(m_instance, m_debugMessenger);
     if (m_surface != VK_NULL_HANDLE) vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
     if (m_instance != VK_NULL_HANDLE) vkDestroyInstance(m_instance, nullptr);
+}
+
+bool VulkanDevice::isDeviceLost() const
+{
+    VkResult result = vkGetFenceStatus(m_device, m_deviceLostCheckFence);
+    return result == VK_ERROR_DEVICE_LOST;
 }
 
 void VulkanDevice::createInstance(bool enableValidation, const std::vector<const char*>& requiredExtensions)

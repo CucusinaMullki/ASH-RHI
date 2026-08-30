@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+#include <stdexcept>
 #include <cstdint>
 
 namespace ASH
@@ -286,6 +288,15 @@ enum class ResourceState : uint8_t {
     TransferSrc,
     TransferDst,
     Present,
+};
+
+class DeviceLostException : public std::runtime_error
+{
+public:
+    explicit DeviceLostException(const std::string& message)
+        : std::runtime_error(message)
+    {
+    }
 };
 
 }

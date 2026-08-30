@@ -29,6 +29,8 @@ public:
     std::unique_ptr<ASH::Sampler> createSampler(const ASH::SamplerDesc& desc) override;
     std::unique_ptr<ASH::DescriptorSetLayout> createDescriptorSetLayout(const ASH::DescriptorSetLayoutDesc& desc) override;
     std::unique_ptr<ASH::DescriptorSet> createDescriptorSet(ASH::DescriptorSetLayout* layout) override;
+
+    bool isDeviceLost() const;
     
     void submit(ASH::CommandBuffer* commandBuffer) override;
     void waitIdle() override;
@@ -58,8 +60,9 @@ private:
     VkDevice m_device = VK_NULL_HANDLE;
     VkQueue m_graphicsQueue = VK_NULL_HANDLE;
     uint32_t m_graphicsQueueFamily = 0;
-    VkDescriptorPool m_descriptorPool = VK_NULL_HANDLE; 
+    VkDescriptorPool m_descriptorPool = VK_NULL_HANDLE;
     VkSurfaceKHR m_surface = VK_NULL_HANDLE;
+    VkFence m_deviceLostCheckFence = VK_NULL_HANDLE;
 
     std::mutex m_commandPoolMutex;
     std::unordered_map<std::thread::id, VkCommandPool> m_commandPools;
