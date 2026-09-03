@@ -21,6 +21,7 @@ Makefile
 *.exe
 *.out
 *.app
+*.nix
 
 *.spv
 shaders/compiled/
