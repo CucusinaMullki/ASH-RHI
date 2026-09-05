@@ -1,4 +1,5 @@
 file(GLOB_RECURSE RHI_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/vulkan/*.cpp
 )
 file(GLOB_RECURSE RHI_HEADERS CONFIGURE_DEPENDS
@@ -28,6 +29,24 @@ if(RHI_ENABLE_VALIDATION)
         $<$<CONFIG:Debug>:RHI_ENABLE_VALIDATION_LAYERS>
     )
 endif()
+
+include(GNUInstallDirs)
+
+install(TARGETS rhi
+    EXPORT AshTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(EXPORT AshTargets
+    FILE AshTargets.cmake
+    NAMESPACE ASH::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/ASH
+)
 
 target_compile_options(rhi PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>

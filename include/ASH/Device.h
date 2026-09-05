@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 namespace ASH
 {
@@ -38,6 +39,11 @@ enum class PipelineStage : uint8_t
     AllCommands,
 };
 
+enum class Backend
+{
+    Vulkan,
+};
+
 struct SubmitInfo
 {
     CommandBuffer* commandBuffer = nullptr;
@@ -69,11 +75,14 @@ public:
     virtual std::unique_ptr<Semaphore> createSemaphore() = 0;
     virtual std::unique_ptr<Fence> createFence(bool initiallySignaled) = 0;
 
+    virtual void attachSurface(void* nativeSurfaceHandle) = 0;
     virtual void submit(const SubmitInfo& info) = 0;
     virtual void waitIdle() = 0;
 
 protected:
     Device() = default;
 };
+
+std::unique_ptr<Device> createDevice(Backend backend, bool enableValidation, const std::vector<const char*>& requiredExtensions = {});
 
 }

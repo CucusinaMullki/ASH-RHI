@@ -1,7 +1,5 @@
 #include "ASH/ASH.h"
 #include "vulkan/VulkanDevice.h"
-#include "vulkan/VulkanCommandBuffer.h"
-#include "vulkan/VulkanSwapChain.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -77,17 +75,18 @@ int main()
     const char** exts = glfwGetRequiredInstanceExtensions(&extCount);
     std::vector<const char*> requiredExtensions(exts, exts + extCount);
 
-    ASH::vulkan::VulkanDevice device(true, requiredExtensions);
+    auto device = ASH::createDevice(ASH::Backend::Vulkan, /*enableValidation*/true, requiredExtensions);
     std::printf("Device created.\n");
 
+    auto* vulkanDevice = static_cast<ASH::vulkan::VulkanDevice*>(device.get());
     VkSurfaceKHR surface = VK_NULL_HANDLE;
-    VkResult surfaceResult = glfwCreateWindowSurface(device.getInstance(), window, nullptr, &surface);
+    VkResult surfaceResult = glfwCreateWindowSurface(vulkanDevice->getInstance(), window, nullptr, &surface);
     if (surfaceResult != VK_SUCCESS)
     {
         std::fprintf(stderr, "glfwCreateWindowSurface failed: %d \n", surfaceResult);
         return 1;
     }
-    device.attachSurface(surface);
+    device->attachSurface(reinterpret_cast<void*>(surface));
 
     ASH::SwapChainDesc swapChainDesc{};
     swapChainDesc.extent = {800, 600};
@@ -95,9 +94,7 @@ int main()
     swapChainDesc.imageCount = 3;
     swapChainDesc.presentMode = ASH::PresentMode::Fifo;
 
-    auto swapChain = device.createSwapChain(swapChainDesc);
-
-    auto* vulkanSwapChain = static_cast<ASH::vulkan::VulkanSwapChain*>(swapChain.get());
+    auto swapChain = device->createSwapChain(swapChainDesc);
 
     ASH::AttachmentDesc colorAttachment{};
     colorAttachment.format = ASH::Format::B8G8R8A8_UNorm;
@@ -107,7 +104,7 @@ int main()
     ASH::RenderPassDesc rpDesc{};
     rpDesc.colorAttachments = { colorAttachment };
 
-    auto renderPass = device.createRenderPass(rpDesc);
+    auto renderPass = device->createRenderPass(rpDesc);
 
     std::vector<std::unique_ptr<ASH::Framebuffer>> framebuffers;
     for (uint32_t i = 0; i < swapChain->getImageCount(); ++i)
@@ -116,7 +113,7 @@ int main()
         fbDesc.renderPass = renderPass.get();
         fbDesc.colorAttachments = { swapChain->getImage(i) };
         fbDesc.extent = swapChain->getExtent();
-        framebuffers.push_back(device.createFramebuffer(fbDesc));
+        framebuffers.push_back(device->createFramebuffer(fbDesc));
     }
     
     ASH::DescriptorBindingDesc textureBinding{};
@@ -127,9 +124,9 @@ int main()
     ASH::DescriptorSetLayoutDesc layoutDesc{};
     layoutDesc.bindings = { textureBinding };
 
-    auto descriptorSetLayout = device.createDescriptorSetLayout(layoutDesc);
+    auto descriptorSetLayout = device->createDescriptorSetLayout(layoutDesc);
 
-    auto descriptorSet = device.createDescriptorSet(descriptorSetLayout.get());
+    auto descriptorSet = device->createDescriptorSet(descriptorSetLayout.get());
     
     constexpr uint32_t kTextureSize = 16;
     std::vector<uint8_t> pixels = generateCheckerboardPixels(kTextureSize, kTextureSize);
@@ -142,20 +139,20 @@ int main()
     textureDesc.arrayLayers = 1;
     textureDesc.usage = ASH::TextureUsage::Sampled | ASH::TextureUsage::TransferDst;
 
-    auto texture = device.createTexture(textureDesc);
+    auto texture = device->createTexture(textureDesc);
     std::printf("Texture created.\n");
 
     ASH::BufferDesc stagingDesc{};
     stagingDesc.size = pixels.size();
     stagingDesc.usage = ASH::BufferUsage::TransferSrc;
     stagingDesc.memory = ASH::MemoryUsage::CpuToGpu;
-    auto stagingBuffer = device.createBuffer(stagingDesc);
+    auto stagingBuffer = device->createBuffer(stagingDesc);
 
     void* stagingData = stagingBuffer->map();
     std::memcpy(stagingData, pixels.data(), pixels.size());
     stagingBuffer->unmap();
 
-    auto uploadCmd = device.createCommandBuffer();
+    auto uploadCmd = device->createCommandBuffer();
     uploadCmd->begin();
 
     ASH::TextureBarrier toDst{};
@@ -174,15 +171,12 @@ int main()
 
     uploadCmd->end();
 
-    auto* vulkanUploadCmd = static_cast<ASH::vulkan::VulkanCommandBuffer*>(uploadCmd.get());
-    VkCommandBuffer uploadHandle = vulkanUploadCmd->getHandle();
-
     ASH::SamplerDesc samplerDesc{};
     samplerDesc.magFilter = ASH::Filter::Nearest;
     samplerDesc.minFilter = ASH::Filter::Nearest;
     samplerDesc.addressModeU = ASH::AddressMode::Repeat;
     samplerDesc.addressModeV = ASH::AddressMode::Repeat;
-    auto sampler = device.createSampler(samplerDesc);
+    auto sampler = device->createSampler(samplerDesc);
 
     ASH::DescriptorImageInfo textureImageInfo{};
     textureImageInfo.texture = texture.get();
@@ -195,12 +189,10 @@ int main()
 
     descriptorSet->update(&write, 1);
 
-    VkSubmitInfo uploadSubmit{};
-    uploadSubmit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    uploadSubmit.commandBufferCount = 1;
-    uploadSubmit.pCommandBuffers = &uploadHandle;
-    vkQueueSubmit(device.getGraphicsQueue(), 1, &uploadSubmit, VK_NULL_HANDLE);
-    device.waitIdle();
+    ASH::SubmitInfo uploadSubmit{};
+    uploadSubmit.commandBuffer = uploadCmd.get();
+    device->submit(uploadSubmit);
+    device->waitIdle();
 
     std::vector<uint32_t> vertCode = readSpirvFile(std::string(SHADER_DIR) + "triangle.vert.spv");
     std::vector<uint32_t> fragCode = readSpirvFile(std::string(SHADER_DIR) + "triangle.frag.spv");
@@ -231,7 +223,7 @@ int main()
 
     pipelineDesc.renderPass = renderPass.get();
 
-    auto pipeline = device.createGraphicsPipeline(pipelineDesc);
+    auto pipeline = device->createGraphicsPipeline(pipelineDesc);
     std::printf("Pipeline created.\n");
 
     ASH::Viewport viewport{};
@@ -255,20 +247,20 @@ int main()
     std::vector<std::unique_ptr<ASH::Fence>> inFlightFences;
     for (uint32_t i = 0; i < kMaxFramesInFlight; ++i)
     {
-        imageAvailableSemaphores.push_back(device.createSemaphore());
-        inFlightFences.push_back(device.createFence(/*initiallySignaled=*/true));
+        imageAvailableSemaphores.push_back(device->createSemaphore());
+        inFlightFences.push_back(device->createFence(/*initiallySignaled=*/true));
     }
 
     std::vector<std::unique_ptr<ASH::Semaphore>> renderFinishedSemaphores;
     for (uint32_t i = 0; i < swapChain->getImageCount(); ++i)
     {
-        renderFinishedSemaphores.push_back(device.createSemaphore());
+        renderFinishedSemaphores.push_back(device->createSemaphore());
     }
 
     std::vector<std::unique_ptr<ASH::CommandBuffer>> commandBuffers;
     for (uint32_t i = 0; i < kMaxFramesInFlight; ++i)
     {
-        commandBuffers.push_back(device.createCommandBuffer());
+        commandBuffers.push_back(device->createCommandBuffer());
     }
     std::printf("Command buffer created.\n");
 
@@ -331,14 +323,14 @@ int main()
         submitInfo.signalSemaphore = renderFinishedSemaphores[imageIndex].get();
         submitInfo.signalFence = inFlightFences[currentFrame].get(); 
 
-        device.submit(submitInfo);
+        device->submit(submitInfo);
 
         swapChain->present(imageIndex, renderFinishedSemaphores[imageIndex].get());
 
         currentFrame = (currentFrame + 1) % kMaxFramesInFlight;
     }
 
-    device.waitIdle();
+    device->waitIdle();
     }
     glfwDestroyWindow(window);
     glfwTerminate();

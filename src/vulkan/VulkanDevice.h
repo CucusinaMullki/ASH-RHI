@@ -39,6 +39,8 @@ public:
 
     void attachSurface(VkSurfaceKHR surface);
 
+    void attachSurface(void* nativeSurfaceHandle) override { attachSurface(reinterpret_cast<VkSurfaceKHR>(nativeSurfaceHandle)); }
+
     VkInstance getInstance() const { return m_instance; }
     VkPhysicalDevice getPhysicalDevice() const { return m_physicalDevice; }
     VkDevice getHandle() const { return m_device; }

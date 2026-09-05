@@ -30,22 +30,24 @@ Step-by-step guide: how to create a window, a device, and draw your first triang
 #include <GLFW/glfw3.h>
 ```
 
-`ASH` abstracts the **GPU**, not the window — GLFW (or any other windowing library) handles the window and input; that is not the RHI's job.
+`ASH` abstracts the **GPU**, not the window - GLFW (or any other windowing library) handles the window and input; that is not the RHI's job.
 
 ## 2. Device — the starting point
 
-Everything starts with `Device` — the factory for every other resource.
+Everything starts with `Device` - the factory for every other resource.
 
 ```cpp
 uint32_t extCount = 0;
 const char** exts = glfwGetRequiredInstanceExtensions(&extCount);
 std::vector<const char*> requiredExtensions(exts, exts + extCount);
 
-ASH::vulkan::VulkanDevice device(/*enableValidation=*/true, requiredExtensions);
+auto device = ASH::createDevice(ASH::Backend::Vulkan, /*enableValidation=*/true, requiredExtensions);
 ```
+- `ASH::createDevice` is the **only** place in application code where a specific backend is named - as Backend::Vulkan, an enum value, not a class name. It returns `std::unique_ptr<ASH::Device>`.
+- `enableValidation` - keep it `true` during development. It enables Vulkan validation layers, which catch API misuse (an incorrect resource layout, a forgotten barrier, etc.) and print it straight to the console.
+- `requiredExtensions` - platform-specific Vulkan extensions needed to create a surface (GLFW knows which ones it needs). If you're rendering without a window, pass an empty list.
 
-- `enableValidation` — keep it `true` during development. It enables Vulkan validation layers, which catch API misuse (an incorrect resource layout, a forgotten barrier, etc.) and print it straight to the console.
-- `requiredExtensions` — platform-specific Vulkan extensions needed to create a surface (GLFW knows which ones it needs). If you're rendering without a window, pass an empty list.
+From here on, device is used as ``device->createBuffer(...)``, ``device->createTexture(...)``, etc. - through the arrow operator on a ``unique_ptr<ASH::Device>``, never through a concrete type.
 
 ## 3. Window and Surface
 
@@ -71,9 +73,9 @@ A chain of images that are shown on screen in turn.
 
 ```cpp
 ASH::SwapChainDesc desc{};
-desc.extent      = { 800, 600 };
-desc.format      = ASH::Format::B8G8R8A8_UNorm;
-desc.imageCount   = 3;
+desc.extent = { 800, 600 };
+desc.format = ASH::Format::B8G8R8A8_UNorm;
+desc.imageCount = 3;
 desc.presentMode = ASH::PresentMode::Fifo;
 
 auto swapChain = device.createSwapChain(desc);
@@ -167,7 +169,7 @@ pipelineDesc.renderPass = renderPass.get();
 auto pipeline = device.createGraphicsPipeline(pipelineDesc);
 ```
 
-**About culling:** the default value of `rasterization.cullMode` is `CullMode::Back`. If your triangle doesn't show up on screen for no obvious reason, this is the first thing to check — the geometry may be getting culled due to incorrect vertex winding order.
+**About culling:** the default value of `rasterization.cullMode` is `CullMode::Back`. If your triangle doesn't show up on screen for no obvious reason, this is the first thing to check - the geometry may be getting culled due to incorrect vertex winding order.
 
 ## 8. Render loop
 
@@ -181,7 +183,7 @@ while (!glfwWindowShouldClose(window))
     uint32_t imageIndex = 0;
     if (!swapChain->acquireNextImage(imageIndex))
     {
-        continue;   // swapchain is out of date — see the resize section
+        continue;   // swapchain is out of date - see the resize section
     }
 
     commandBuffer->begin();
@@ -233,7 +235,7 @@ while (!glfwWindowShouldClose(window))
 device.waitIdle();
 ```
 
-This is the simplest approach — one command buffer, `waitIdle()` every frame. It works correctly but is not the fastest option (see section 13).
+This is the simplest approach - one command buffer, `waitIdle()` every frame. It works correctly but is not the fastest option (see section 13).
 
 ## 9. Passing data to a shader: UBO
 
@@ -247,23 +249,23 @@ uboDesc.usage = ASH::BufferUsage::UniformBuffer;
 uboDesc.memory = ASH::MemoryUsage::CpuToGpu;   // the CPU writes to it directly
 auto uniformBuffer = device.createBuffer(uboDesc);
 
-// Layout — the "shape" of the resource set (once)
+// Layout - the "shape" of the resource set (once)
 ASH::DescriptorBindingDesc binding{};
 binding.binding = 0;
 binding.type = ASH::DescriptorType::UniformBuffer;
 binding.stageFlags = ASH::ShaderStage::Vertex;
 auto layout = device.createDescriptorSetLayout({ {binding} });
 
-// Set — the real reference to the buffer (once)
+// Set - the real reference to the buffer (once)
 auto descriptorSet = device.createDescriptorSet(layout.get());
 ASH::DescriptorBufferInfo bufferInfo{ uniformBuffer.get(), /*offset=*/0, /*range=*/0 };
 ASH::DescriptorWrite write{ /*binding=*/0, ASH::DescriptorType::UniformBuffer, /*arrayElement=*/0, &bufferInfo, nullptr };
 descriptorSet->update(&write, 1);
 
-// In the Pipeline — attach the layout
+// In the Pipeline - attach the layout
 pipelineDesc.descriptorSetLayouts = { layout.get() };
 
-// In the render loop — update the data and bind
+// In the render loop - update the data and bind
 void* data = uniformBuffer->map();
 std::memcpy(data, &myData, sizeof(MyUniformData));
 uniformBuffer->unmap();
@@ -287,7 +289,7 @@ texDesc.extent = { width, height, 1 };
 texDesc.usage = ASH::TextureUsage::Sampled | ASH::TextureUsage::TransferDst;
 auto texture = device.createTexture(texDesc);
 
-// 2. Staging buffer — copy the pixels there from the CPU
+// 2. Staging buffer - copy the pixels there from the CPU
 ASH::BufferDesc stagingDesc{};
 stagingDesc.size = pixelDataSize;
 stagingDesc.usage = ASH::BufferUsage::TransferSrc;
@@ -321,17 +323,17 @@ For a texture descriptor, use `DescriptorType::CombinedImageSampler` and fill `w
 
 ## 11. Push Constants
 
-A lighter alternative to UBOs for small data (a single matrix, a few floats) that changes **every draw call** rather than once per frame. Doesn't require a separate buffer/descriptor — the data is copied directly into the command buffer.
+A lighter alternative to UBOs for small data (a single matrix, a few floats) that changes **every draw call** rather than once per frame. Doesn't require a separate buffer/descriptor - the data is copied directly into the command buffer.
 
 ```cpp
-// In the Pipeline — declare a range
+// In the Pipeline - declare a range
 ASH::PushConstantRange range{};
 range.stageFlags = ASH::ShaderStage::Vertex;
 range.offset = 0;
 range.size = sizeof(float);
 pipelineDesc.pushConstantRanges = { range };
 
-// In the render loop — before each draw
+// In the render loop - before each draw
 float value = 3.14f;
 commandBuffer->pushConstants(pipeline.get(), ASH::ShaderStage::Vertex, 0, sizeof(float), &value);
 commandBuffer->draw(...);
@@ -344,7 +346,7 @@ layout(push_constant) uniform PushConstants { float value; } pc;
 
 ## 12. Compute Pipeline
 
-For computation outside the graphics pipeline (physics, data processing) — doesn't draw anything, just runs a shader program over a buffer/texture.
+For computation outside the graphics pipeline (physics, data processing) - doesn't draw anything, just runs a shader program over a buffer/texture.
 
 ```cpp
 ASH::ComputePipelineDesc computeDesc{};
@@ -360,7 +362,7 @@ commandBuffer->dispatch(groupCountX, groupCountY, groupCountZ);
 
 ## 13. Frames-in-flight
 
-Section 8 uses `waitIdle()` every frame — simple, but not the fastest approach. For CPU/GPU parallelism you need several independent slots:
+Section 8 uses `waitIdle()` every frame - simple, but not the fastest approach. For CPU/GPU parallelism you need several independent slots:
 
 ```cpp
 constexpr uint32_t kMaxFramesInFlight = ASH::vulkan::VulkanSwapChain::kMaxFramesInFlight;   // usually 2
@@ -381,7 +383,7 @@ vulkanSwapChain->acquireNextImage(imageIndex, currentFrame);
 /* CRITICAL: the presentation semaphore is indexed by imageIndex, NOT
    currentFrame — otherwise there is a data race when the presentation
    engine reuses the semaphore. */
-VkSemaphore waitSem   = vulkanSwapChain->getImageAvailableSemaphore(currentFrame);
+VkSemaphore waitSem = vulkanSwapChain->getImageAvailableSemaphore(currentFrame);
 VkSemaphore signalSem = vulkanSwapChain->getRenderFinishedSemaphore(imageIndex);
 
 vkQueueSubmit(..., vulkanSwapChain->getInFlightFence(currentFrame));
@@ -390,7 +392,7 @@ vulkanSwapChain->present(imageIndex, currentFrame);
 currentFrame = (currentFrame + 1) % kMaxFramesInFlight;
 ```
 
-No `device.waitIdle()` inside the loop — only once, after exiting it.
+No `device.waitIdle()` inside the loop - only once, after exiting it.
 
 ## 14. Window resize
 
@@ -403,7 +405,7 @@ auto recreateSwapchainResources = [&]() {
     device.waitIdle();
     vulkanSwapChain->resize({ (uint32_t)w, (uint32_t)h });
 
-    /* Framebuffers hold references to the OLD textures — recreate everything
+    /* Framebuffers hold references to the OLD textures - recreate everything
        that depends on the swapchain (including the depth texture, if used) */
     framebuffers.clear();
     for (uint32_t i = 0; i < swapChain->getImageCount(); ++i)
@@ -435,8 +437,8 @@ All `ASH::*` objects are `std::unique_ptr` and are destroyed automatically (RAII
     // ... render loop ...
 
     device.waitIdle();   // wait for the GPU before destroying anything
-}   // <-- everything is destroyed HERE, in reverse order: pipeline, framebuffers,
-    //     renderPass, swapChain, device
+}   /* <- everything is destroyed HERE, in reverse order: pipeline, framebuffers,
+        renderPass, swapChain, device */
 
 glfwDestroyWindow(window);   // ONLY after the scope above has closed
 glfwTerminate();
