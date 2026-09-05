@@ -142,7 +142,7 @@ The current allocator does **not** reuse freed space inside a block - a block is
 - No mipmap generation and no compressed texture formats.
 - `vkQueueSubmit` is not thread-safe by itself (see "Multithreading" above).
 - One `VkCommandPool` per thread, but no pool of reusable command buffers - every `createCommandBuffer()` is a fresh allocation.
-- Window surface creation requires one `static_cast` to the concrete backend type (see "Window surfaces are a deliberate exception" above) — this is intentional, not an oversight.
+- Window surface creation requires one `static_cast` to the concrete backend type (see "Window surfaces are a deliberate exception" above) - this is intentional, not an oversight.
 
 ## Development
 
