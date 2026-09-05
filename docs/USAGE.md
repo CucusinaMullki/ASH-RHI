@@ -5,7 +5,7 @@ Step-by-step guide: how to create a window, a device, and draw your first triang
 ## Contents
 
 - [1. Minimal dependencies](#1-minimal-dependencies)
-- [2. Device — the starting point](#2-device--the-starting-point)
+- [2. Device - the starting point](#2-device--the-starting-point)
 - [3. Window and Surface](#3-window-and-surface)
 - [4. SwapChain](#4-swapchain)
 - [5. Shaders: from GLSL to GPU](#5-shaders-from-glsl-to-gpu)
@@ -32,7 +32,7 @@ Step-by-step guide: how to create a window, a device, and draw your first triang
 
 `ASH` abstracts the **GPU**, not the window - GLFW (or any other windowing library) handles the window and input; that is not the RHI's job.
 
-## 2. Device — the starting point
+## 2. Device - the starting point
 
 Everything starts with `Device` - the factory for every other resource.
 
@@ -149,7 +149,7 @@ For depth testing, additionally set `rpDesc.hasDepthStencil = true` + `rpDesc.de
 
 ## 7. Pipeline
 
-Fixes the GPU pipeline state **once**: shaders, rasterization, blending, descriptor layouts. Unlike OpenGL, state does not change on the fly between draw calls — only viewport/scissor remain dynamic.
+Fixes the GPU pipeline state **once**: shaders, rasterization, blending, descriptor layouts. Unlike OpenGL, state does not change on the fly between draw calls - only viewport/scissor remain dynamic.
 
 ```cpp
 ASH::ShaderStageDesc vertStage{};
@@ -279,7 +279,7 @@ layout(binding = 0) uniform UniformBufferObject { mat4 rotation; } ubo;
 
 ## 10. Textures
 
-GPU textures **cannot** be `map()`'d directly — data is loaded through an intermediate staging buffer.
+GPU textures **cannot** be `map()`'d directly - data is loaded through an intermediate staging buffer.
 
 ```cpp
 // 1. Create the texture
