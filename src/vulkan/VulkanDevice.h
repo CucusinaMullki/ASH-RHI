@@ -29,10 +29,12 @@ public:
     std::unique_ptr<ASH::Sampler> createSampler(const ASH::SamplerDesc& desc) override;
     std::unique_ptr<ASH::DescriptorSetLayout> createDescriptorSetLayout(const ASH::DescriptorSetLayoutDesc& desc) override;
     std::unique_ptr<ASH::DescriptorSet> createDescriptorSet(ASH::DescriptorSetLayout* layout) override;
+    std::unique_ptr<ASH::Semaphore> createSemaphore() override;
+    std::unique_ptr<ASH::Fence> createFence(bool initiallySignaled) override;
 
     bool isDeviceLost() const;
     
-    void submit(ASH::CommandBuffer* commandBuffer) override;
+    void submit(const ASH::SubmitInfo& info) override;
     void waitIdle() override;
 
     void attachSurface(VkSurfaceKHR surface);

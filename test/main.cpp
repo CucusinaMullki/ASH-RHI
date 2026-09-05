@@ -5,6 +5,7 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <cstdio>
 #include <vector>
 #include <string>
 #include <fstream>
@@ -28,6 +29,27 @@ std::vector<uint32_t> readSpirvFile(const std::string& path)
     file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(fileSize));
 
     return buffer;
+}
+
+std::vector<uint8_t> generateCheckerboardPixels(uint32_t width, uint32_t height)
+{
+    std::vector<uint8_t> pixels(width * height * 4);
+
+    for (uint32_t y = 0; y < height; ++y)
+    {
+        for (uint32_t x = 0; x < width; ++x)
+        {
+            bool isWhite = ((x / 4) + (y / 4)) % 2 == 0;
+
+            size_t index = (y * width + x) * 4;
+            pixels[index + 0] = isWhite ? 255 : 40;
+            pixels[index + 1] = isWhite ? 255 : 40;
+            pixels[index + 2] = isWhite ? 255 : 200;
+            pixels[index + 3] = 255;
+        }
+    }
+
+    return pixels;
 }
 
 }
@@ -56,9 +78,15 @@ int main()
     std::vector<const char*> requiredExtensions(exts, exts + extCount);
 
     ASH::vulkan::VulkanDevice device(true, requiredExtensions);
+    std::printf("Device created.\n");
 
     VkSurfaceKHR surface = VK_NULL_HANDLE;
-    glfwCreateWindowSurface(device.getInstance(), window, nullptr, &surface);
+    VkResult surfaceResult = glfwCreateWindowSurface(device.getInstance(), window, nullptr, &surface);
+    if (surfaceResult != VK_SUCCESS)
+    {
+        std::fprintf(stderr, "glfwCreateWindowSurface failed: %d \n", surfaceResult);
+        return 1;
+    }
     device.attachSurface(surface);
 
     ASH::SwapChainDesc swapChainDesc{};
@@ -90,6 +118,89 @@ int main()
         fbDesc.extent = swapChain->getExtent();
         framebuffers.push_back(device.createFramebuffer(fbDesc));
     }
+    
+    ASH::DescriptorBindingDesc textureBinding{};
+    textureBinding.binding = 0;
+    textureBinding.type = ASH::DescriptorType::CombinedImageSampler;
+    textureBinding.stageFlags = ASH::ShaderStage::Fragment;
+
+    ASH::DescriptorSetLayoutDesc layoutDesc{};
+    layoutDesc.bindings = { textureBinding };
+
+    auto descriptorSetLayout = device.createDescriptorSetLayout(layoutDesc);
+
+    auto descriptorSet = device.createDescriptorSet(descriptorSetLayout.get());
+    
+    constexpr uint32_t kTextureSize = 16;
+    std::vector<uint8_t> pixels = generateCheckerboardPixels(kTextureSize, kTextureSize);
+
+    ASH::TextureDesc textureDesc{};
+    textureDesc.type = ASH::TextureType::Texture2D;
+    textureDesc.format = ASH::Format::R8G8B8A8_UNorm;
+    textureDesc.extent = { kTextureSize, kTextureSize, 1 };
+    textureDesc.mipLevels = 1;
+    textureDesc.arrayLayers = 1;
+    textureDesc.usage = ASH::TextureUsage::Sampled | ASH::TextureUsage::TransferDst;
+
+    auto texture = device.createTexture(textureDesc);
+    std::printf("Texture created.\n");
+
+    ASH::BufferDesc stagingDesc{};
+    stagingDesc.size = pixels.size();
+    stagingDesc.usage = ASH::BufferUsage::TransferSrc;
+    stagingDesc.memory = ASH::MemoryUsage::CpuToGpu;
+    auto stagingBuffer = device.createBuffer(stagingDesc);
+
+    void* stagingData = stagingBuffer->map();
+    std::memcpy(stagingData, pixels.data(), pixels.size());
+    stagingBuffer->unmap();
+
+    auto uploadCmd = device.createCommandBuffer();
+    uploadCmd->begin();
+
+    ASH::TextureBarrier toDst{};
+    toDst.texture = texture.get();
+    toDst.oldState = ASH::ResourceState::Undefined;
+    toDst.newState = ASH::ResourceState::TransferDst;
+    uploadCmd->barrier(&toDst, 1, nullptr, 0);
+
+    uploadCmd->copyBufferToTexture(stagingBuffer.get(), texture.get());
+
+    ASH::TextureBarrier toRead{};
+    toRead.texture = texture.get();
+    toRead.oldState = ASH::ResourceState::TransferDst;
+    toRead.newState = ASH::ResourceState::ShaderReadOnly;
+    uploadCmd->barrier(&toRead, 1, nullptr, 0);
+
+    uploadCmd->end();
+
+    auto* vulkanUploadCmd = static_cast<ASH::vulkan::VulkanCommandBuffer*>(uploadCmd.get());
+    VkCommandBuffer uploadHandle = vulkanUploadCmd->getHandle();
+
+    ASH::SamplerDesc samplerDesc{};
+    samplerDesc.magFilter = ASH::Filter::Nearest;
+    samplerDesc.minFilter = ASH::Filter::Nearest;
+    samplerDesc.addressModeU = ASH::AddressMode::Repeat;
+    samplerDesc.addressModeV = ASH::AddressMode::Repeat;
+    auto sampler = device.createSampler(samplerDesc);
+
+    ASH::DescriptorImageInfo textureImageInfo{};
+    textureImageInfo.texture = texture.get();
+    textureImageInfo.sampler = sampler.get();
+
+    ASH::DescriptorWrite write{};
+    write.binding = 0;
+    write.type = ASH::DescriptorType::CombinedImageSampler;
+    write.imageInfo = &textureImageInfo;
+
+    descriptorSet->update(&write, 1);
+
+    VkSubmitInfo uploadSubmit{};
+    uploadSubmit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    uploadSubmit.commandBufferCount = 1;
+    uploadSubmit.pCommandBuffers = &uploadHandle;
+    vkQueueSubmit(device.getGraphicsQueue(), 1, &uploadSubmit, VK_NULL_HANDLE);
+    device.waitIdle();
 
     std::vector<uint32_t> vertCode = readSpirvFile(std::string(SHADER_DIR) + "triangle.vert.spv");
     std::vector<uint32_t> fragCode = readSpirvFile(std::string(SHADER_DIR) + "triangle.frag.spv");
@@ -112,6 +223,7 @@ int main()
     pipelineDesc.rasterization.cullMode = ASH::CullMode::None;
     pipelineDesc.depthStencil.depthTestEnable = false;
     pipelineDesc.depthStencil.depthWriteEnable = false;
+    pipelineDesc.descriptorSetLayouts = { descriptorSetLayout.get() };
 
     ASH::ColorBlendAttachmentState blend;
     blend.blendEnable = false;
@@ -120,8 +232,7 @@ int main()
     pipelineDesc.renderPass = renderPass.get();
 
     auto pipeline = device.createGraphicsPipeline(pipelineDesc);
-
-    auto commandBuffer = device.createCommandBuffer();
+    std::printf("Pipeline created.\n");
 
     ASH::Viewport viewport{};
     viewport.x = 0.0f;
@@ -137,6 +248,30 @@ int main()
     scissor.width = swapChain->getExtent().width;
     scissor.height = swapChain->getExtent().height;
 
+
+    constexpr uint32_t kMaxFramesInFlight = 2;
+
+    std::vector<std::unique_ptr<ASH::Semaphore>> imageAvailableSemaphores;
+    std::vector<std::unique_ptr<ASH::Fence>> inFlightFences;
+    for (uint32_t i = 0; i < kMaxFramesInFlight; ++i)
+    {
+        imageAvailableSemaphores.push_back(device.createSemaphore());
+        inFlightFences.push_back(device.createFence(/*initiallySignaled=*/true));
+    }
+
+    std::vector<std::unique_ptr<ASH::Semaphore>> renderFinishedSemaphores;
+    for (uint32_t i = 0; i < swapChain->getImageCount(); ++i)
+    {
+        renderFinishedSemaphores.push_back(device.createSemaphore());
+    }
+
+    std::vector<std::unique_ptr<ASH::CommandBuffer>> commandBuffers;
+    for (uint32_t i = 0; i < kMaxFramesInFlight; ++i)
+    {
+        commandBuffers.push_back(device.createCommandBuffer());
+    }
+    std::printf("Command buffer created.\n");
+
     uint32_t currentFrame = 0;
 
     while (!glfwWindowShouldClose(window))
@@ -147,12 +282,17 @@ int main()
             glfwSetWindowShouldClose(window, GLFW_TRUE);
         }
 
+        inFlightFences[currentFrame]->wait();
+
         uint32_t imageIndex = 0;
-        if (!swapChain->acquireNextImage(imageIndex))
+        if (!swapChain->acquireNextImage(imageIndex, imageAvailableSemaphores[currentFrame].get()))
         {
             continue;
         }
 
+        inFlightFences[currentFrame]->reset();
+
+        auto* commandBuffer = commandBuffers[currentFrame].get();
         commandBuffer->begin();
 
         ASH::ClearColor clearColor{};
@@ -170,6 +310,7 @@ int main()
 
         commandBuffer->beginRenderPass(rpBegin);
         commandBuffer->bindPipeline(pipeline.get());
+        commandBuffer->bindDescriptorSet(pipeline.get(), 0, descriptorSet.get());
         commandBuffer->setViewport(viewport);
         commandBuffer->setScissor(scissor);
         commandBuffer->draw(3, 1, 0, 0);
@@ -183,28 +324,18 @@ int main()
 
         commandBuffer->end();
 
-        auto* vulkanCmd = static_cast<ASH::vulkan::VulkanCommandBuffer*>(commandBuffer.get());
-        VkCommandBuffer cmdHandle = vulkanCmd->getHandle();
+        ASH::SubmitInfo submitInfo{};
+        submitInfo.commandBuffer = commandBuffer;
+        submitInfo.waitSemaphore = imageAvailableSemaphores[currentFrame].get();
+        submitInfo.waitStage = ASH::PipelineStage::ColorAttachmentOutput;
+        submitInfo.signalSemaphore = renderFinishedSemaphores[imageIndex].get();
+        submitInfo.signalFence = inFlightFences[currentFrame].get(); 
 
-        VkSemaphore waitSemaphore   = vulkanSwapChain->getImageAvailableSemaphore(0);
-        VkSemaphore signalSemaphore = vulkanSwapChain->getRenderFinishedSemaphore(imageIndex);
-        VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        device.submit(submitInfo);
 
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = &waitSemaphore;
-        submitInfo.pWaitDstStageMask = &waitStage;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &cmdHandle;
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &signalSemaphore;
+        swapChain->present(imageIndex, renderFinishedSemaphores[imageIndex].get());
 
-        vkQueueSubmit(device.getGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-
-        swapChain->present(imageIndex);
-
-        device.waitIdle();
+        currentFrame = (currentFrame + 1) % kMaxFramesInFlight;
     }
 
     device.waitIdle();

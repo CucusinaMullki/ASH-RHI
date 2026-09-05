@@ -6,6 +6,8 @@
 #include "VulkanPipeline.h"
 #include "VulkanDescriptorSetLayout.h"
 #include "VulkanDescriptorSet.h"
+#include "VulkanFence.h"
+#include "VulkanSemaphore.h"
 #include "VulkanSwapChain.h"
 #include "VulkanCommandBuffer.h"
 #include "VulkanSampler.h"
@@ -87,6 +89,17 @@ uint32_t findGraphicsQueueFamily(VkPhysicalDevice physicalDevice)
     }
 
     throw std::runtime_error("No queue family with schedule support found.");
+}
+
+VkPipelineStageFlags toVkPipelineStage(ASH::PipelineStage stage)
+{
+    switch (stage)
+    {
+        case ASH::PipelineStage::ColorAttachmentOutput: return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        case ASH::PipelineStage::Transfer: return VK_PIPELINE_STAGE_TRANSFER_BIT;
+        case ASH::PipelineStage::AllCommands: return VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    }
+    return VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 }
 
 }
@@ -321,17 +334,42 @@ std::unique_ptr<ASH::Buffer> VulkanDevice::createBuffer(const ASH::BufferDesc& d
     return std::make_unique<VulkanBuffer>(m_device, m_memoryAllocator.get(), desc);
 }
 
-void VulkanDevice::submit(ASH::CommandBuffer* commandBuffer) 
+void VulkanDevice::submit(const ASH::SubmitInfo& info) 
 {
-    auto* vulkanCommandBuffer = static_cast<VulkanCommandBuffer*>(commandBuffer);
-    VkCommandBuffer handle = vulkanCommandBuffer->getHandle();
+    auto* vulkanCmd = static_cast<VulkanCommandBuffer*>(info.commandBuffer);
+    VkCommandBuffer cmdHandle = vulkanCmd->getHandle();
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &handle;
+    submitInfo.pCommandBuffers = &cmdHandle;
 
-    VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE), "vkQueueSubmit");
+    VkSemaphore waitSem = VK_NULL_HANDLE;
+    VkPipelineStageFlags waitStageFlags = 0;
+    if (info.waitSemaphore != nullptr)
+    {
+        waitSem = static_cast<VulkanSemaphore*>(info.waitSemaphore)->getHandle();
+        waitStageFlags = toVkPipelineStage(info.waitStage);
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = &waitSem;
+        submitInfo.pWaitDstStageMask = &waitStageFlags;
+    }
+
+    VkSemaphore signalSem = VK_NULL_HANDLE;
+    if (info.signalSemaphore != nullptr)
+    {
+        signalSem = static_cast<VulkanSemaphore*>(info.signalSemaphore)->getHandle();
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = &signalSem;
+    }
+
+    VkFence fenceHandle = VK_NULL_HANDLE;
+    if (info.signalFence != nullptr)
+    {
+        fenceHandle = static_cast<VulkanFence*>(info.signalFence)->getHandle();
+    }
+
+    VK_CHECK(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, fenceHandle), "vkQueueSubmit");
 }
 
 void VulkanDevice::waitIdle()
@@ -359,6 +397,16 @@ std::unique_ptr<ASH::CommandBuffer> VulkanDevice::createCommandBuffer()
 {
     VkCommandPool pool = getOrCreateCommandPool();
     return std::make_unique<VulkanCommandBuffer>(m_device, pool);
+}
+
+std::unique_ptr<ASH::Semaphore> VulkanDevice::createSemaphore()
+{
+    return std::make_unique<VulkanSemaphore>(m_device);
+}
+
+std::unique_ptr<ASH::Fence> VulkanDevice::createFence(bool initiallySignaled)
+{
+    return std::make_unique<VulkanFence>(m_device, initiallySignaled);
 }
 
 }

@@ -12,3 +12,4 @@
 #include "ASH/Device.h"
 #include "ASH/Sampler.h"
 #include "ASH/Descriptor.h"
+#include "Sync.h"
