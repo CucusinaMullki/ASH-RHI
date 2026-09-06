@@ -102,7 +102,7 @@ The current allocator does **not** reuse freed space inside a block - a block is
 
 ### Multithreading
 
-`VulkanDevice` creates a dedicated `VkCommandPool` per thread that requests a command buffer (lazily, on first use). `vkQueueSubmit` itself is **not** protected against concurrent calls — submission is expected to happen from a single (usually the main) thread.
+`VulkanDevice` creates a dedicated `VkCommandPool` per thread that requests a command buffer (lazily, on first use). `vkQueueSubmit` itself is **not** protected against concurrent calls - submission is expected to happen from a single (usually the main) thread.
 
 ### Barriers
 
