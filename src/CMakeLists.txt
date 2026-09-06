@@ -3,8 +3,8 @@ file(GLOB_RECURSE RHI_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/vulkan/*.cpp
 )
 file(GLOB_RECURSE RHI_HEADERS CONFIGURE_DEPENDS
-    ${CMAKE_SOURCE_DIR}/include/*.hpp
-    ${CMAKE_SOURCE_DIR}/include/*.h
+    ${PROJECT_SOURCE_DIR}/include/*.hpp
+    ${PROJECT_SOURCE_DIR}/include/*.h
 )
 
 if(RHI_BUILD_SHARED)
@@ -16,7 +16,7 @@ endif()
 
 target_include_directories(rhi
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -38,7 +38,7 @@ install(TARGETS rhi
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
@@ -50,6 +50,3 @@ install(EXPORT AshTargets
 
 target_compile_options(rhi PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
-    $<$<CONFIG:Debug>:-g -Og>
-    $<$<CONFIG:Release>:-O3>
-)
