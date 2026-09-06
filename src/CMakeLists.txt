@@ -50,3 +50,6 @@ install(EXPORT AshTargets
 
 target_compile_options(rhi PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
+    $<$<CONFIG:Debug>:-g -Og>
+    $<$<CONFIG:Release>:-O3>
+)
