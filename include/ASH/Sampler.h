@@ -15,6 +15,8 @@ struct SamplerDesc
     float maxAnisotropy = 1.0f;
     float minLod = 0.0f;
     float maxLod = 1000.0f;
+    bool compareEnable = false;
+    CompareOp compareOp = CompareOp::Less;
     const char* debugName = nullptr;
 };
 
