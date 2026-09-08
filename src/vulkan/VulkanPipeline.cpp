@@ -133,11 +133,14 @@ VulkanPipeline::VulkanPipeline(VkDevice device, const ASH::GraphicsPipelineDesc&
     viewportState.scissorCount = 1;
 
     VkPipelineRasterizationStateCreateInfo rasterizer{};
-    rasterizer.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.polygonMode = toVkPolygonMode(desc.rasterization.polygonMode);
-    rasterizer.cullMode    = toVkCullMode(desc.rasterization.cullMode);
-    rasterizer.frontFace   = toVkFrontFace(desc.rasterization.frontFace);
-    rasterizer.lineWidth   = desc.rasterization.lineWidth;
+    rasterizer.cullMode = toVkCullMode(desc.rasterization.cullMode);
+    rasterizer.frontFace = toVkFrontFace(desc.rasterization.frontFace);
+    rasterizer.lineWidth = desc.rasterization.lineWidth;
+    rasterizer.depthBiasEnable = desc.rasterization.depthBiasEnable ? VK_TRUE : VK_FALSE;
+    rasterizer.depthBiasConstantFactor = desc.rasterization.depthBiasConstantFactor;
+    rasterizer.depthBiasSlopeFactor = desc.rasterization.depthBiasSlopeFactor;
 
     VkPipelineMultisampleStateCreateInfo multisampling{};
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;

@@ -59,6 +59,9 @@ struct RasterizationState
     CullMode cullMode = CullMode::Back;
     FrontFace frontFace = FrontFace::CounterClockwise;
     float lineWidth = 1.0f;
+    bool depthBiasEnable = false;
+    float depthBiasConstantFactor = 0.0f;
+    float depthBiasSlopeFactor = 0.0f;
 };
 
 struct DepthStencilState
