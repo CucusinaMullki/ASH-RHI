@@ -9,7 +9,7 @@ namespace ASH::vulkan
 namespace
 {
 
-VkAttachmentDescription toAttachmentDescription(const ASH::AttachmentDesc& desc, VkImageLayout finalLayout)
+VkAttachmentDescription toAttachmentDescription(const ASH::AttachmentDesc& desc, VkImageLayout finalLayout, bool isDepth)
 {
     VkAttachmentDescription attachment{};
     attachment.format = toVkFormat(desc.format);
@@ -19,7 +19,16 @@ VkAttachmentDescription toAttachmentDescription(const ASH::AttachmentDesc& desc,
     attachment.stencilLoadOp = toVkLoadOp(desc.stencilLoadOp);
     attachment.stencilStoreOp = toVkStoreOp(desc.stencilStoreOp);
 
-    attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    if (desc.loadOp == ASH::LoadOp::Load)
+    {
+        attachment.initialLayout = isDepth
+            ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+            : finalLayout;
+    }
+    else
+    {
+        attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
 
     attachment.finalLayout = finalLayout;
 
