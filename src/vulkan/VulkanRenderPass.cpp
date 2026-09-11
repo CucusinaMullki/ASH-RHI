@@ -48,7 +48,7 @@ VulkanRenderPass::VulkanRenderPass(VkDevice device, const ASH::RenderPassDesc& d
     for (size_t i = 0; i < desc.colorAttachments.size(); ++i)
     {
         attachments.push_back(toAttachmentDescription(desc.colorAttachments[i],
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, false));
 
         VkAttachmentReference ref{};
         ref.attachment = static_cast<uint32_t>(i);
@@ -59,7 +59,7 @@ VulkanRenderPass::VulkanRenderPass(VkDevice device, const ASH::RenderPassDesc& d
     VkAttachmentReference depthRef{};
     if (desc.hasDepthStencil) {
         attachments.push_back(toAttachmentDescription(desc.depthStencilAttachment,
-            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, true));
         depthRef.attachment = static_cast<uint32_t>(attachments.size() - 1);
         depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     }
