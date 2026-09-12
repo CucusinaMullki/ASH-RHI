@@ -256,6 +256,7 @@ VkImageLayout toVkImageLayout(ASH::ResourceState state)
         case ASH::ResourceState::TransferSrc: return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         case ASH::ResourceState::TransferDst: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         case ASH::ResourceState::Present: return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        case ASH::ResourceState::General: return VK_IMAGE_LAYOUT_GENERAL;
     }
     return VK_IMAGE_LAYOUT_UNDEFINED;
 }
@@ -299,9 +300,11 @@ namespace
             case ASH::ResourceState::TransferSrc:            return VK_PIPELINE_STAGE_TRANSFER_BIT;
             case ASH::ResourceState::TransferDst:            return VK_PIPELINE_STAGE_TRANSFER_BIT;
             case ASH::ResourceState::Present:                return VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+            case ASH::ResourceState::General:                return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         }
         return VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     }
+
 
     VkAccessFlags accessForState(ASH::ResourceState state)
     {
@@ -314,6 +317,7 @@ namespace
             case ASH::ResourceState::TransferSrc: return VK_ACCESS_TRANSFER_READ_BIT;
             case ASH::ResourceState::TransferDst: return VK_ACCESS_TRANSFER_WRITE_BIT;
             case ASH::ResourceState::Present: return 0;
+            case ASH::ResourceState::General: return VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
         }
         return VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
     }

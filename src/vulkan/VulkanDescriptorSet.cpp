@@ -82,9 +82,11 @@ void VulkanDescriptorSet::update(const ASH::DescriptorWrite* writes, uint32_t wr
         if (write.imageInfo != nullptr)
         {
             auto* vulkanTexture = static_cast<VulkanTexture*>(write.imageInfo->texture);
-
+        
             VkDescriptorImageInfo imageInfo{};
-            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            imageInfo.imageLayout = (write.type == ASH::DescriptorType::StorageImage)
+                ? VK_IMAGE_LAYOUT_GENERAL
+                : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             imageInfo.imageView = vulkanTexture->getImageView();
 
             if (write.imageInfo->sampler != nullptr)

@@ -288,6 +288,7 @@ enum class ResourceState : uint8_t {
     TransferSrc,
     TransferDst,
     Present,
+    General,
 };
 
 class DeviceLostException : public std::runtime_error
