@@ -14,16 +14,33 @@ VulkanFramebuffer::VulkanFramebuffer(VkDevice device, const ASH::FramebufferDesc
     std::vector<VkImageView> attachments;
     attachments.reserve(desc.colorAttachments.size() + 1);
 
-    for (ASH::Texture* colorTexture : desc.colorAttachments)
+    for (size_t i = 0; i < desc.colorAttachments.size(); i++)
     {
-        auto* vulkanTexture = static_cast<VulkanTexture*>(colorTexture);
-        attachments.push_back(vulkanTexture->getImageView());
+        auto* vulkanTexture = static_cast<VulkanTexture*>(desc.colorAttachments[i]);
+
+        bool hasLayer = i < desc.colorAttachmentLayers.size();
+        bool hasMip = i < desc.colorAttachmentMips.size();
+
+        if (hasLayer || hasMip)
+        {
+            uint32_t layer = hasLayer ? desc.colorAttachmentLayers[i] : 0;
+            uint32_t mip = hasMip ? desc.colorAttachmentMips[i] : 0;
+            attachments.push_back(static_cast<VkImageView>(vulkanTexture->getFaceView(layer, mip)));
+        }
+        else
+        {
+            attachments.push_back(vulkanTexture->getImageView());
+        }
     }
 
     if (desc.depthStencilAttachment != nullptr)
     {
         auto* vulkanTexture = static_cast<VulkanTexture*>(desc.depthStencilAttachment);
-        attachments.push_back(vulkanTexture->getImageView());
+
+        if (desc.depthStencilAttachmentLayer != 0 || desc.depthStencilAttachmentMip != 0)
+            attachments.push_back(static_cast<VkImageView>(vulkanTexture->getFaceView(desc.depthStencilAttachmentLayer, desc.depthStencilAttachmentMip)));
+        else
+            attachments.push_back(vulkanTexture->getImageView());
     }
 
     auto* vulkanRenderPass = static_cast<VulkanRenderPass*>(desc.renderPass);
