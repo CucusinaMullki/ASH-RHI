@@ -51,6 +51,9 @@ VulkanTexture::VulkanTexture(VkDevice device, VkImage externalImage, const ASH::
 
 VulkanTexture::~VulkanTexture()
 {
+    for (auto& [key, view] : m_faceViews)
+        vkDestroyImageView(m_device, view, nullptr);
+
     if (m_imageView != VK_NULL_HANDLE) vkDestroyImageView(m_device, m_imageView, nullptr);
     if (m_ownsImage && m_image != VK_NULL_HANDLE) vkDestroyImage(m_device, m_image, nullptr);
 
@@ -58,6 +61,39 @@ VulkanTexture::~VulkanTexture()
     {
         m_allocator->free(m_allocation);
     }
+}
+
+void* VulkanTexture::getFaceView(uint32_t layer, uint32_t mipLevel)
+{
+    auto key = std::make_pair(layer, mipLevel);
+    auto it = m_faceViews.find(key);
+    if (it != m_faceViews.end())
+        return it->second;
+
+    VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    if (isDepthFormat(m_desc.format))
+    {
+        aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        if (isStencilFormat(m_desc.format))
+            aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
+
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = m_image;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = toVkFormat(m_desc.format);
+    viewInfo.subresourceRange.aspectMask = aspectMask;
+    viewInfo.subresourceRange.baseMipLevel = mipLevel;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = layer;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    VkImageView view = VK_NULL_HANDLE;
+    VK_CHECK(vkCreateImageView(m_device, &viewInfo, nullptr, &view), "vkCreateImageView (face view)");
+
+    m_faceViews[key] = view;
+    return view;
 }
 
 void VulkanTexture::createImageView()

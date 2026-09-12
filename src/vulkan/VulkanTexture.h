@@ -3,6 +3,7 @@
 #include "ASH/Texture.h"
 #include "VulkanMemoryAllocator.h"
 #include <vulkan/vulkan.h>
+#include <map>
 
 namespace ASH::vulkan {
 
@@ -20,6 +21,8 @@ public:
     VkImage getImage() const { return m_image; }
     VkImageView getImageView() const { return m_imageView; }
 
+    void* getFaceView(uint32_t layer, uint32_t mipLevel) override;
+
 private:
     void createImageView();
 
@@ -30,6 +33,8 @@ private:
     MemoryAllocation m_allocation{};
     ASH::TextureDesc m_desc;
     bool m_ownsImage = true;
+
+    std::map<std::pair<uint32_t, uint32_t>, VkImageView> m_faceViews;
 };
 
 }

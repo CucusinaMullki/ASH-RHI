@@ -24,6 +24,8 @@ public:
 
     virtual const TextureDesc& getDesc() const = 0;
 
+    virtual void* getFaceView(uint32_t layer, uint32_t mipLevel) = 0;
+
 protected:
     Texture() = default;
 };
