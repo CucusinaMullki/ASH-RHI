@@ -81,7 +81,7 @@ void* VulkanTexture::getFaceView(uint32_t layer, uint32_t mipLevel)
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = m_image;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.viewType = (m_desc.type == ASH::TextureType::Texture3D) ? VK_IMAGE_VIEW_TYPE_3D : VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format = toVkFormat(m_desc.format);
     viewInfo.subresourceRange.aspectMask = aspectMask;
     viewInfo.subresourceRange.baseMipLevel = mipLevel;
