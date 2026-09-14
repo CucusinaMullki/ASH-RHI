@@ -87,7 +87,11 @@ void VulkanDescriptorSet::update(const ASH::DescriptorWrite* writes, uint32_t wr
             imageInfo.imageLayout = (write.type == ASH::DescriptorType::StorageImage)
                 ? VK_IMAGE_LAYOUT_GENERAL
                 : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = vulkanTexture->getImageView();
+            
+            if (write.imageInfo->useSpecificMipLayer)
+                imageInfo.imageView = static_cast<VkImageView>(vulkanTexture->getFaceView(write.imageInfo->arrayLayer, write.imageInfo->mipLevel));
+            else
+                imageInfo.imageView = vulkanTexture->getImageView();
 
             if (write.imageInfo->sampler != nullptr)
             {

@@ -64,6 +64,9 @@ struct DescriptorImageInfo
 {
     Texture* texture = nullptr;
     Sampler* sampler = nullptr;
+    uint32_t mipLevel = 0;
+    uint32_t arrayLayer = 0;
+    bool useSpecificMipLayer = false;
 };
 
 struct DescriptorWrite
