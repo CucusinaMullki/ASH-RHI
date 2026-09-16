@@ -122,18 +122,18 @@ VulkanDevice::VulkanDevice(bool enableValidation, const std::vector<const char*>
 void VulkanDevice::createDescriptorPool()
 {
     std::vector<VkDescriptorPoolSize> poolSizes = {
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100 },
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 },
-        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100 },
-        { VK_DESCRIPTOR_TYPE_SAMPLER, 100 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2000 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2000 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 2000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 2000 },
+        { VK_DESCRIPTOR_TYPE_SAMPLER, 2000 },
     };
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-    poolInfo.maxSets = 100;
+    poolInfo.maxSets = 2000;
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
 
