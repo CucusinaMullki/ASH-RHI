@@ -201,7 +201,7 @@ void VulkanDevice::createInstance(bool enableValidation, const std::vector<const
     std::vector<const char*> extensions = { VK_KHR_SURFACE_EXTENSION_NAME };
     extensions.insert(extensions.end(), requiredExtensions.begin(), requiredExtensions.end());
 
-    bool validationAvailable = enabledValidation && isValidationLayerAvailable();
+    bool validationAvailable = enableValidation && isValidationLayerAvailable();
 
     if (validationAvailable)
     {
