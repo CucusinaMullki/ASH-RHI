@@ -39,7 +39,6 @@ enum class PipelineStage : uint8_t
     Transfer,
     AllCommands,
 };
-
 enum class Backend
 {
     Vulkan,

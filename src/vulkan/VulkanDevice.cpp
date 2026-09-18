@@ -13,6 +13,7 @@
 #include "VulkanSampler.h"
 #include "VulkanResult.h"
 
+#include <cstring>
 #include <cstdio>
 #include <vector>
 
@@ -21,6 +22,23 @@ namespace ASH::vulkan {
 namespace {
 
 constexpr const char* kValidationLayer = "VK_LAYER_KHRONOS_validation";
+
+bool isValidationLayerAvailable() {
+    uint32_t layerCount = 0;
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+    std::vector<VkLayerProperties> availableLayers(layerCount);
+    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+    for (const auto& layer : availableLayers) {
+        if (std::strcmp(layer.layerName, kValidationLayer) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT severity,
@@ -183,7 +201,9 @@ void VulkanDevice::createInstance(bool enableValidation, const std::vector<const
     std::vector<const char*> extensions = { VK_KHR_SURFACE_EXTENSION_NAME };
     extensions.insert(extensions.end(), requiredExtensions.begin(), requiredExtensions.end());
 
-    if (enableValidation)
+    bool validationAvailable = enabledValidation && isValidationLayerAvailable();
+
+    if (validationAvailable)
     {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
@@ -194,7 +214,7 @@ void VulkanDevice::createInstance(bool enableValidation, const std::vector<const
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
-    if (enableValidation)
+    if (validationAvailable)
     {
         createInfo.enabledLayerCount = 1;
         createInfo.ppEnabledLayerNames = &kValidationLayer;
@@ -202,9 +222,9 @@ void VulkanDevice::createInstance(bool enableValidation, const std::vector<const
 
     VK_CHECK(vkCreateInstance(&createInfo, nullptr, &m_instance), "vkCreateInstance");
 
-    if (enableValidation)
+    if (validationAvailable)
     {
-        createDebugMessenger(m_instance, &m_debugMessenger);
+        VK_CHECK(createDebugMessenger(m_instance, &m_debugMessenger), "createDebugMessenger");
     }
 }
 
