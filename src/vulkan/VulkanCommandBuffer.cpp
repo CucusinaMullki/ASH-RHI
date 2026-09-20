@@ -242,6 +242,34 @@ void VulkanCommandBuffer::copyBufferToTexture(ASH::Buffer* src, ASH::Texture* ds
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }
 
+void VulkanCommandBuffer::blitTexture(const ASH::TextureBlitRegion& region)
+{
+    auto* vulkanSrc = static_cast<VulkanTexture*>(region.srcTexture);
+    auto* vulkanDst = static_cast<VulkanTexture*>(region.dstTexture);
+    const ASH::TextureDesc& srcDesc = vulkanSrc->getDesc();
+    const ASH::TextureDesc& dstDesc = vulkanDst->getDesc();
+
+    VkImageBlit blit{};
+    blit.srcSubresource.aspectMask = aspectMaskFor(srcDesc);
+    blit.srcSubresource.mipLevel = region.srcMipLevel;
+    blit.srcSubresource.baseArrayLayer = 0;
+    blit.srcSubresource.layerCount = 1;
+    blit.srcOffsets[0] = { region.srcOffsetX, region.srcOffsetY, 0 };
+    blit.srcOffsets[1] = { region.srcOffsetX + region.srcExtentX, region.srcOffsetY + region.srcExtentY, 1 };
+
+    blit.dstSubresource.aspectMask = aspectMaskFor(dstDesc);
+    blit.dstSubresource.mipLevel = region.dstMipLevel;
+    blit.dstSubresource.baseArrayLayer = 0;
+    blit.dstSubresource.layerCount = 1;
+    blit.dstOffsets[0] = { region.dstOffsetX, region.dstOffsetY, 0 };
+    blit.dstOffsets[1] = { region.dstOffsetX + region.dstExtentX, region.dstOffsetY + region.dstExtentY, 1 };
+
+    vkCmdBlitImage(m_commandBuffer,
+        vulkanSrc->getImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        vulkanDst->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &blit, VK_FILTER_LINEAR);
+}
+
 void VulkanCommandBuffer::barrier(const ASH::TextureBarrier* textureBarriers, uint32_t textureBarrierCount,
     const ASH::BufferBarrier*  bufferBarriers,  uint32_t bufferBarrierCount)
 {

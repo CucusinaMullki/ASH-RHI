@@ -40,6 +40,7 @@ public:
         size_t srcOffset, size_t dstOffset) override;
 
     void copyBufferToTexture(ASH::Buffer* src, ASH::Texture* dst) override;
+    void blitTexture(const ASH::TextureBlitRegion& region) override;
 
     void barrier(const ASH::TextureBarrier* textureBarriers, uint32_t textureBarrierCount,
         const ASH::BufferBarrier*  bufferBarriers,  uint32_t bufferBarrierCount) override;

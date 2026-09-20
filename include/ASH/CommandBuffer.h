@@ -37,6 +37,19 @@ struct BufferBarrier
     Buffer* buffer = nullptr;
 };
 
+struct TextureBlitRegion
+{
+    Texture* srcTexture = nullptr;
+    uint32_t srcMipLevel = 0;
+    int32_t srcOffsetX = 0, srcOffsetY = 0;
+    int32_t srcExtentX = 0, srcExtentY = 0;
+
+    Texture* dstTexture = nullptr;
+    uint32_t dstMipLevel = 0;
+    int32_t dstOffsetX = 0, dstOffsetY = 0;
+    int32_t dstExtentX = 0, dstExtentY = 0;
+};
+
 class CommandBuffer
 {
 public:
@@ -68,6 +81,7 @@ public:
     virtual void copyBuffer(Buffer* src, Buffer* dst, size_t size, size_t srcOffset, size_t dstOffset) = 0;
 
     virtual void copyBufferToTexture(Buffer* src, Texture* dst) = 0;
+    virtual void blitTexture(const TextureBlitRegion& region) = 0;
 
     virtual void pushConstants(Pipeline* pipeline, ShaderStage stages, uint32_t offset, uint32_t size, const void* data) = 0;
 
