@@ -172,7 +172,7 @@ void VulkanDevice::savePipelineCache()
     std::vector<char> data(dataSize);
     vkGetPipelineCacheData(m_device, m_pipelineCache, &dataSize, data.data());
 
-    std::ofstream file("pipelina_cache.bin", std::ios::binary);
+    std::ofstream file("pipeline_cache.bin", std::ios::binary);
     file.write(data.data(), (std::streamsize)dataSize);
 }
 
