@@ -70,9 +70,8 @@ VkPipelineLayout createPipelineLayout(VkDevice device,
 
 }
 
-VulkanPipeline::VulkanPipeline(VkDevice device, const ASH::GraphicsPipelineDesc& desc)
-    : m_device(device)
-    , m_type(ASH::PipelineType::Graphics)
+VulkanPipeline::VulkanPipeline(VkDevice device, VkPipelineCache pipelineCache, const ASH::GraphicsPipelineDesc& desc)
+    : m_device(device), m_pipelineCache(pipelineCache)
 {
     std::vector<VkShaderModule> shaderModules;
     std::vector<VkPipelineShaderStageCreateInfo> stageInfos;
@@ -200,7 +199,7 @@ VulkanPipeline::VulkanPipeline(VkDevice device, const ASH::GraphicsPipelineDesc&
     pipelineInfo.renderPass = vulkanRenderPass->getHandle();
     pipelineInfo.subpass = 0;
 
-    VK_CHECK(vkCreateGraphicsPipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_pipeline),
+    VK_CHECK(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineInfo, nullptr, &m_pipeline),
         "vkCreateGraphicsPipelines");
 
     for (VkShaderModule module : shaderModules)
@@ -209,9 +208,8 @@ VulkanPipeline::VulkanPipeline(VkDevice device, const ASH::GraphicsPipelineDesc&
     }
 }
 
-VulkanPipeline::VulkanPipeline(VkDevice device, const ASH::ComputePipelineDesc& desc)
-    : m_device(device)
-    , m_type(ASH::PipelineType::Compute)
+VulkanPipeline::VulkanPipeline(VkDevice device, VkPipelineCache pipelineCache, const ASH::ComputePipelineDesc& desc)
+    : m_device(device), m_pipelineCache(pipelineCache)
 {
 
     VkShaderModule module = createShaderModule(m_device, desc.stage);
@@ -230,7 +228,7 @@ VulkanPipeline::VulkanPipeline(VkDevice device, const ASH::ComputePipelineDesc& 
     pipelineInfo.stage = stageInfo;
     pipelineInfo.layout = m_layout;
 
-    VK_CHECK(vkCreateComputePipelines(m_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_pipeline),
+    VK_CHECK(vkCreateComputePipelines(m_device, m_pipelineCache, 1, &pipelineInfo, nullptr, &m_pipeline),
         "vkCreateComputePipelines");
 
     vkDestroyShaderModule(m_device, module, nullptr);

@@ -47,6 +47,7 @@ public:
     VkQueue getGraphicsQueue() const { return m_graphicsQueue; }
     uint32_t getGraphicsQueueFamily() const { return m_graphicsQueueFamily; }
     VkDescriptorPool getDescriptorPool() const { return m_descriptorPool; }
+    VkPipelineCache getPipelineCache() const { return m_pipelineCache; }
     VulkanMemoryAllocator* getMemoryAllocator() const { return m_memoryAllocator.get(); }
 
 private:
@@ -55,6 +56,8 @@ private:
     void createLogicalDevice();
     void createCommandPool();
     void createDescriptorPool();
+    void createPipelineCache();
+    void savePipelineCache();
 
     VkCommandPool getOrCreateCommandPool();
 
@@ -65,6 +68,7 @@ private:
     VkQueue m_graphicsQueue = VK_NULL_HANDLE;
     uint32_t m_graphicsQueueFamily = 0;
     VkDescriptorPool m_descriptorPool = VK_NULL_HANDLE;
+    VkPipelineCache m_pipelineCache = VK_NULL_HANDLE;
     VkSurfaceKHR m_surface = VK_NULL_HANDLE;
     VkFence m_deviceLostCheckFence = VK_NULL_HANDLE;
 

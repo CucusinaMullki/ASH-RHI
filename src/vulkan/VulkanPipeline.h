@@ -9,8 +9,8 @@ namespace ASH::vulkan
 class VulkanPipeline final : public ASH::Pipeline
 {
 public:
-    VulkanPipeline(VkDevice device, const ASH::GraphicsPipelineDesc& desc);
-    VulkanPipeline(VkDevice device, const ASH::ComputePipelineDesc& desc);
+    VulkanPipeline(VkDevice device, VkPipelineCache pipelineCache, const ASH::GraphicsPipelineDesc& desc);
+    VulkanPipeline(VkDevice device, VkPipelineCache pipelineCache, const ASH::ComputePipelineDesc& desc);
     ~VulkanPipeline() override;
 
     ASH::PipelineType getType() const override { return m_type; }
@@ -20,6 +20,7 @@ public:
     
 private:
     VkDevice m_device = VK_NULL_HANDLE;
+    VkPipelineCache m_pipelineCache = VK_NULL_HANDLE;
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_layout = VK_NULL_HANDLE;
     ASH::PipelineType m_type;

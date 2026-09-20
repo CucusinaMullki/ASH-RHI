@@ -13,6 +13,7 @@
 #include "VulkanSampler.h"
 #include "VulkanResult.h"
 
+#include <fstream>
 #include <cstdio>
 #include <vector>
 
@@ -112,11 +113,49 @@ VulkanDevice::VulkanDevice(bool enableValidation, const std::vector<const char*>
     createLogicalDevice();
     m_memoryAllocator = std::make_unique<VulkanMemoryAllocator>(m_device, m_physicalDevice);
     createDescriptorPool();
+    createPipelineCache();
 
     VkFenceCreateInfo fenceInfo{};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     VK_CHECK(vkCreateFence(m_device, &fenceInfo, nullptr, &m_deviceLostCheckFence), "vkCreateFence (device lost check)");
+}
+
+void VulkanDevice::createPipelineCache()
+{
+    std::vector<char> cacheData;
+    std::ifstream file("pipeline_cache.bin", std::ios::binary | std::ios::ate);
+    if (file.is_open())
+    {
+        size_t size = (size_t)file.tellg();
+        file.seekg(0);
+        cacheData.resize(size);
+        file.read(cacheData.data(), size);
+    }
+
+    VkPipelineCacheCreateInfo cacheInfo{};
+    cacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+    cacheInfo.initialDataSize = cacheData.size();
+    cacheInfo.pInitialData = cacheData.empty() ? nullptr : cacheData.data();
+
+    VK_CHECK(vkCreatePipelineCache(m_device, &cacheInfo, nullptr, &m_pipelineCache), "vkCreatePipelineCache");
+}
+
+void VulkanDevice::savePipelineCache()
+{
+    if (m_pipelineCache == VK_NULL_HANDLE)
+        return;
+    
+    size_t dataSize = 0;
+    vkGetPipelineCacheData(m_device, m_pipelineCache, &dataSize, nullptr);
+    if (dataSize == 0)
+        return;
+
+    std::vector<char> data(dataSize);
+    vkGetPipelineCacheData(m_device, m_pipelineCache, &dataSize, data.data());
+
+    std::ofstream file("pipelina_cache.bin", std::ios::binary);
+    file.write(data.data(), (std::streamsize)dataSize);
 }
 
 void VulkanDevice::createDescriptorPool()
@@ -140,6 +179,8 @@ void VulkanDevice::createDescriptorPool()
     VK_CHECK(vkCreateDescriptorPool(m_device, &poolInfo, nullptr, &m_descriptorPool), "vkCreateDescriptorPool");
 }
 
+
+
 VulkanDevice::~VulkanDevice()
 {
     if (m_device != VK_NULL_HANDLE)
@@ -156,6 +197,9 @@ VulkanDevice::~VulkanDevice()
     }
 
     m_memoryAllocator.reset();
+
+    savePipelineCache();
+    if (m_pipelineCache != VK_NULL_HANDLE) vkDestroyPipelineCache(m_device, m_pipelineCache, nullptr);
 
     if (m_device != VK_NULL_HANDLE) vkDestroyDevice(m_device, nullptr);
 
@@ -315,12 +359,12 @@ std::unique_ptr<ASH::Framebuffer> VulkanDevice::createFramebuffer(const ASH::Fra
 
 std::unique_ptr<ASH::Pipeline> VulkanDevice::createGraphicsPipeline(const ASH::GraphicsPipelineDesc& desc)
 {
-    return std::make_unique<VulkanPipeline>(m_device, desc);
+    return std::make_unique<VulkanPipeline>(m_device, m_pipelineCache, desc);
 }
 
 std::unique_ptr<ASH::Pipeline> VulkanDevice::createComputePipeline(const ASH::ComputePipelineDesc& desc)
 {
-    return std::make_unique<VulkanPipeline>(m_device, desc);
+    return std::make_unique<VulkanPipeline>(m_device, m_pipelineCache, desc);
 }
 
 std::unique_ptr<ASH::SwapChain> VulkanDevice::createSwapChain(const ASH::SwapChainDesc& desc) {
