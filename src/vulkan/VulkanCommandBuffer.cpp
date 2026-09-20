@@ -299,8 +299,16 @@ void VulkanCommandBuffer::barrier(const ASH::TextureBarrier* textureBarriers, ui
         imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         imageBarrier.image = vulkanTexture->getImage();
         imageBarrier.subresourceRange.aspectMask = aspectMaskFor(desc);
-        imageBarrier.subresourceRange.baseMipLevel = 0;
-        imageBarrier.subresourceRange.levelCount = desc.mipLevels;
+        if (b.useSpecificMip)
+        {
+            imageBarrier.subresourceRange.baseMipLevel = b.mipLevel;
+            imageBarrier.subresourceRange.levelCount = 1;
+        }
+        else
+        {
+            imageBarrier.subresourceRange.baseMipLevel = 0;
+            imageBarrier.subresourceRange.levelCount = desc.mipLevels;
+        }
         imageBarrier.subresourceRange.baseArrayLayer = 0;
         imageBarrier.subresourceRange.layerCount = desc.arrayLayers;
 

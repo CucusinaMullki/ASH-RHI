@@ -30,6 +30,8 @@ struct TextureBarrier
     Texture* texture = nullptr;
     ResourceState oldState = ResourceState::Undefined;
     ResourceState newState = ResourceState::Undefined;
+    bool useSpecificMip = false;
+    uint32_t mipLevel = 0;
 };
 
 struct BufferBarrier
