@@ -13,6 +13,8 @@
 #include "VulkanSampler.h"
 #include "VulkanResult.h"
 
+#include <fstream>
+#include <cstring>
 #include <cstdio>
 #include <vector>
 
