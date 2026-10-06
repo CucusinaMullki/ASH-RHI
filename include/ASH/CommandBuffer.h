@@ -84,6 +84,7 @@ public:
 
     virtual void copyBufferToTexture(Buffer* src, Texture* dst) = 0;
     virtual void blitTexture(const TextureBlitRegion& region) = 0;
+    virtual void copyTexture(Texture* src, Texture* dst) = 0;
 
     virtual void pushConstants(Pipeline* pipeline, ShaderStage stages, uint32_t offset, uint32_t size, const void* data) = 0;
 

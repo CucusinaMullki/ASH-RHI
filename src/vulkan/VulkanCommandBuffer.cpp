@@ -270,6 +270,24 @@ void VulkanCommandBuffer::blitTexture(const ASH::TextureBlitRegion& region)
         1, &blit, VK_FILTER_LINEAR);
 }
 
+void VulkanCommandBuffer::copyTexture(ASH::Texture* src, ASH::Texture* dst)
+{
+    auto* vulkanSrc = static_cast<VulkanTexture*>(src);
+    auto* vulkanDst = static_cast<VulkanTexture*>(dst);
+    const ASH::TextureDesc& srcDesc = vulkanSrc->getDesc();
+    const ASH::TextureDesc& dstDesc = vulkanDst->getDesc();
+
+    VkImageCopy region{};
+    region.srcSubresource = { aspectMaskFor(srcDesc), 0, 0, 1 };
+    region.dstSubresource = { aspectMaskFor(dstDesc), 0, 0, 1 };
+    region.extent = { srcDesc.extent.width, srcDesc.extent.height, srcDesc.extent.depth };
+
+    vkCmdCopyImage(m_commandBuffer,
+        vulkanSrc->getImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        vulkanDst->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &region);
+}
+
 void VulkanCommandBuffer::barrier(const ASH::TextureBarrier* textureBarriers, uint32_t textureBarrierCount,
     const ASH::BufferBarrier*  bufferBarriers,  uint32_t bufferBarrierCount)
 {
