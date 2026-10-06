@@ -78,6 +78,13 @@ enum class Format : uint16_t
     R32G32B32_Float,
     R32G32B32A32_Float,
 
+    BC1_RGBA_UNorm,
+    BC1_RGBA_SRGB,
+    BC4_UNorm,
+    BC5_UNorm,
+    BC7_UNorm,
+    BC7_SRGB,
+
     D16_UNorm,
     D24_UNorm_S8_UInt,
     D32_Float,

@@ -270,6 +270,28 @@ void VulkanCommandBuffer::blitTexture(const ASH::TextureBlitRegion& region)
         1, &blit, VK_FILTER_LINEAR);
 }
 
+void VulkanCommandBuffer::copyBufferToTextureRegions(ASH::Buffer* src, ASH::Texture* dst, const ASH::BufferTextureCopyRegion* regions, uint32_t regionCount)
+{
+    auto* vulkanSrc = static_cast<VulkanBuffer*>(src);
+    auto* vulkanDst = static_cast<VulkanTexture*>(dst);
+    const ASH::TextureDesc& desc = vulkanDst->getDesc();
+
+    std::vector<VkBufferImageCopy> vkRegions(regionCount);
+    for (uint32_t i = 0; i < regionCount; i++)
+    {
+        VkBufferImageCopy r{};
+        r.bufferOffset = regions[i].bufferOffset;
+        r.imageSubresource.aspectMask = aspectMaskFor(desc);
+        r.imageSubresource.mipLevel = regions[i].mipLevel;
+        r.imageSubresource.baseArrayLayer = regions[i].baseArrayLayer;
+        r.imageSubresource.layerCount = regions[i].layerCount;
+        r.imageExtent = { regions[i].width, regions[i].height, regions[i].depth };
+    }
+
+    vkCmdCopyBufferToImage(m_commandBuffer, vulkanSrc->getHandle(), vulkanDst->getImage(),
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, regionCount, vkRegions.data());
+}
+
 void VulkanCommandBuffer::copyTexture(ASH::Texture* src, ASH::Texture* dst)
 {
     auto* vulkanSrc = static_cast<VulkanTexture*>(src);

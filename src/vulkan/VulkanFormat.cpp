@@ -17,6 +17,12 @@ VkFormat toVkFormat(ASH::Format format) {
         case ASH::Format::R32G32_Float: return VK_FORMAT_R32G32_SFLOAT;
         case ASH::Format::R32G32B32_Float: return VK_FORMAT_R32G32B32_SFLOAT;
         case ASH::Format::R32G32B32A32_Float: return VK_FORMAT_R32G32B32A32_SFLOAT;
+        case ASH::Format::BC1_RGBA_UNorm: return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+        case ASH::Format::BC1_RGBA_SRGB:  return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+        case ASH::Format::BC4_UNorm: return VK_FORMAT_BC4_UNORM_BLOCK;
+        case ASH::Format::BC5_UNorm: return VK_FORMAT_BC5_UNORM_BLOCK;
+        case ASH::Format::BC7_UNorm: return VK_FORMAT_BC7_UNORM_BLOCK;
+        case ASH::Format::BC7_SRGB: return VK_FORMAT_BC7_SRGB_BLOCK;
         case ASH::Format::D16_UNorm: return VK_FORMAT_D16_UNORM;
         case ASH::Format::D24_UNorm_S8_UInt: return VK_FORMAT_D24_UNORM_S8_UINT;
         case ASH::Format::D32_Float: return VK_FORMAT_D32_SFLOAT;

@@ -34,6 +34,17 @@ struct TextureBarrier
     uint32_t mipLevel = 0;
 };
 
+struct BufferTextureCopyRegion
+{
+    uint64_t bufferOffset = 0;
+    uint32_t mipLevel = 0;
+    uint32_t baseArrayLayer = 0;
+    uint32_t layerCount = 1;
+    uint32_t width = 0;
+    uint32_t height = 0;
+    uint32_t depth = 1;
+};
+
 struct BufferBarrier
 {
     Buffer* buffer = nullptr;
@@ -83,6 +94,7 @@ public:
     virtual void copyBuffer(Buffer* src, Buffer* dst, size_t size, size_t srcOffset, size_t dstOffset) = 0;
 
     virtual void copyBufferToTexture(Buffer* src, Texture* dst) = 0;
+    virtual void copyBufferToTextureRegions(Buffer* src, Texture* dst, const BufferTextureCopyRegion* regions, uint32_t regionCount) = 0;
     virtual void blitTexture(const TextureBlitRegion& region) = 0;
     virtual void copyTexture(Texture* src, Texture* dst) = 0;
 
