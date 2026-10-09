@@ -286,6 +286,7 @@ void VulkanCommandBuffer::copyBufferToTextureRegions(ASH::Buffer* src, ASH::Text
         r.imageSubresource.baseArrayLayer = regions[i].baseArrayLayer;
         r.imageSubresource.layerCount = regions[i].layerCount;
         r.imageExtent = { regions[i].width, regions[i].height, regions[i].depth };
+        vkRegions[i] = r;
     }
 
     vkCmdCopyBufferToImage(m_commandBuffer, vulkanSrc->getHandle(), vulkanDst->getImage(),
