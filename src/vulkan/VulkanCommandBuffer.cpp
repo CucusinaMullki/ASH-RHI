@@ -357,7 +357,19 @@ void VulkanCommandBuffer::barrier(const ASH::TextureBarrier* textureBarriers, ui
     }
 
     (void)bufferBarriers;
-    (void)bufferBarrierCount;
+
+    VkMemoryBarrier memBarrier{};
+    memBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    const bool hasBufferBarrier = bufferBarrierCount > 0;
+    if (hasBufferBarrier)
+    {
+        memBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        memBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+        combinedSrcStage |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        combinedDstStage |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+          | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+          | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    }
 
     if (combinedSrcStage == 0) combinedSrcStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     if (combinedDstStage == 0) combinedDstStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
@@ -367,7 +379,7 @@ void VulkanCommandBuffer::barrier(const ASH::TextureBarrier* textureBarriers, ui
         combinedSrcStage,
         combinedDstStage,
         0,
-        0, nullptr,
+        hasBufferBarrier ? 1u : 0u, hasBufferBarrier ? &memBarrier : nullptr,
         0, nullptr,
         static_cast<uint32_t>(imageBarriers.size()), imageBarriers.data()
     );
