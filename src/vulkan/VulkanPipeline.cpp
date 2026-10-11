@@ -211,7 +211,7 @@ VulkanPipeline::VulkanPipeline(VkDevice device, VkPipelineCache pipelineCache, c
 VulkanPipeline::VulkanPipeline(VkDevice device, VkPipelineCache pipelineCache, const ASH::ComputePipelineDesc& desc)
     : m_device(device), m_pipelineCache(pipelineCache)
 {
-
+    m_type = ASH::PipelineType::Compute;
     VkShaderModule module = createShaderModule(m_device, desc.stage);
 
     VkPipelineShaderStageCreateInfo stageInfo{};

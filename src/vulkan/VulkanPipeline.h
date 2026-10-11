@@ -23,7 +23,7 @@ private:
     VkPipelineCache m_pipelineCache = VK_NULL_HANDLE;
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_layout = VK_NULL_HANDLE;
-    ASH::PipelineType m_type;
+    ASH::PipelineType m_type = ASH::PipelineType::Graphics;
 };
 
 }

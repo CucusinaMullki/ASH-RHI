@@ -34,16 +34,28 @@ VkFormat toVkFormat(ASH::Format format) {
 
 VkBufferUsageFlags toVkBufferUsage(ASH::BufferUsage usage)
 {
+    struct Map { ASH::BufferUsage ash; VkBufferUsageFlags vk; };
+
+    static constexpr VkBufferUsageFlags kAddr = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+
+    static constexpr Map kMap[] = {
+        { ASH::BufferUsage::VertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT },
+        { ASH::BufferUsage::IndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT },
+        { ASH::BufferUsage::UniformBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT },
+        { ASH::BufferUsage::StorageBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT },
+        { ASH::BufferUsage::IndirectBuffer,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT },
+        { ASH::BufferUsage::TransferSrc, VK_BUFFER_USAGE_TRANSFER_SRC_BIT },
+        { ASH::BufferUsage::TransferDst, VK_BUFFER_USAGE_TRANSFER_DST_BIT },
+
+        { ASH::BufferUsage::ShaderDeviceAddress, kAddr },
+        { ASH::BufferUsage::AccelerationStructureStorage, kAddr | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR },
+        { ASH::BufferUsage::AccelerationStructureInput, kAddr | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR },
+        { ASH::BufferUsage::ShaderBindingTable, kAddr | VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR },
+    };
+
     VkBufferUsageFlags flags = 0;
-
-    if (hasFlag(usage, ASH::BufferUsage::VertexBuffer)) flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    if (hasFlag(usage, ASH::BufferUsage::IndexBuffer)) flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-    if (hasFlag(usage, ASH::BufferUsage::UniformBuffer)) flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    if (hasFlag(usage, ASH::BufferUsage::StorageBuffer)) flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    if (hasFlag(usage, ASH::BufferUsage::IndirectBuffer)) flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-    if (hasFlag(usage, ASH::BufferUsage::TransferSrc)) flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    if (hasFlag(usage, ASH::BufferUsage::TransferDst)) flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
+    for (const Map& m : kMap)
+        if (hasFlag(usage, m.ash)) flags |= m.vk;
     return flags;
 }
 

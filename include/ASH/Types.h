@@ -105,6 +105,10 @@ enum class BufferUsage : uint32_t
     IndirectBuffer = 1u << 4,
     TransferSrc = 1u << 5,
     TransferDst = 1u << 6,
+    ShaderDeviceAddress = 1u << 7,
+    AccelerationStructureStorage = 1u << 8,
+    AccelerationStructureInput = 1u << 9,
+    ShaderBindingTable = 1u << 10,
 };
 
 constexpr BufferUsage operator|(BufferUsage a, BufferUsage b)
