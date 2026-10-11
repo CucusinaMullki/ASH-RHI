@@ -22,6 +22,9 @@ public:
     Buffer(const Buffer&) = delete;
     Buffer& operator=(const Buffer&) = delete;
 
+    virtual uint64_t getDeviceAddress() const = 0;
+    virtual void* getNativeHandle() const = 0;
+
     virtual size_t getSize() const = 0;
     virtual BufferUsage getUsage() const = 0;
 

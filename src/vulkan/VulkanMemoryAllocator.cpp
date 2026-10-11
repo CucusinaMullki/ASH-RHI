@@ -32,6 +32,7 @@ VulkanMemoryAllocator::Block& VulkanMemoryAllocator::findOrCreateBlock(
 {
     for (Block& block : m_blocks)
     {
+        if (block.memory == VK_NULL_HANDLE) continue;
         if (block.memoryTypeIndex == memoryTypeIndex && (block.size - block.cursor) >= requiredSize)
         {
             return block;
@@ -44,6 +45,11 @@ VulkanMemoryAllocator::Block& VulkanMemoryAllocator::findOrCreateBlock(
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = blockSize;
     allocInfo.memoryTypeIndex = memoryTypeIndex;
+
+    VkMemoryAllocateFlagsInfo flagsInfo{};
+    flagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+    flagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+    if (m_deviceAddress) allocInfo.pNext = &flagsInfo;
 
     VkDeviceMemory memory = VK_NULL_HANDLE;
     VK_CHECK(vkAllocateMemory(m_device, &allocInfo, nullptr, &memory), "vkAllocateMemory (block)");
@@ -78,6 +84,11 @@ MemoryAllocation VulkanMemoryAllocator::allocate(const VkMemoryRequirements& req
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = requirements.size;
         allocInfo.memoryTypeIndex = memoryTypeIndex;
+
+        VkMemoryAllocateFlagsInfo flagsInfo{};
+        flagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+        flagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+        if (m_deviceAddress) allocInfo.pNext = &flagsInfo;
 
         VkDeviceMemory memory = VK_NULL_HANDLE;
         VK_CHECK(vkAllocateMemory(m_device, &allocInfo, nullptr, &memory), "vkAllocateMemory (oversized block)");

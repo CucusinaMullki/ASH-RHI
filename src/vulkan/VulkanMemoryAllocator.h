@@ -25,6 +25,8 @@ public:
     VulkanMemoryAllocator(const VulkanMemoryAllocator&) = delete;
     VulkanMemoryAllocator& operator=(const VulkanMemoryAllocator&) = delete;
 
+    void setDeviceAddressEnabled(bool v) { m_deviceAddress = v; }
+
     MemoryAllocation allocate(const VkMemoryRequirements& requirements, VkMemoryPropertyFlags properties);
     void free(const MemoryAllocation& allocation);
 
@@ -46,6 +48,8 @@ private:
 
     VkDevice         m_device         = VK_NULL_HANDLE;
     VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
+
+    bool m_deviceAddress = false;
 
     std::vector<Block> m_blocks;
 };

@@ -16,6 +16,9 @@ public:
     size_t getSize() const override { return m_desc.size; }
     ASH::BufferUsage getUsage() const override { return m_desc.usage; }
 
+    uint64_t getDeviceAddress() const override;
+    void* getNativeHandle() const override { return reinterpret_cast<void*>(m_buffer); }
+
     void* map() override;
     void unmap() override;
 

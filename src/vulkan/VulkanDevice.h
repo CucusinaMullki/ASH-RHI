@@ -49,6 +49,7 @@ public:
     VkDescriptorPool getDescriptorPool() const { return m_descriptorPool; }
     VkPipelineCache getPipelineCache() const { return m_pipelineCache; }
     VulkanMemoryAllocator* getMemoryAllocator() const { return m_memoryAllocator.get(); }
+    bool isRayTracingSupported() const { return m_rtSupported; }
 
 private:
     void createInstance(bool enableValidation, const std::vector<const char*>& requiredExtensions);
@@ -78,6 +79,8 @@ private:
     std::unique_ptr<VulkanMemoryAllocator> m_memoryAllocator;
     
     bool validationEnabled_ = false;
+    bool m_rtSupported = false;
+    bool checkRayTracingSupport() const;
 };
 
 }

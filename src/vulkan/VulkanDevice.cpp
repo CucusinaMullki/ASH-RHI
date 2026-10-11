@@ -130,6 +130,7 @@ VulkanDevice::VulkanDevice(bool enableValidation, const std::vector<const char*>
     selectPhysicalDevice();
     createLogicalDevice();
     m_memoryAllocator = std::make_unique<VulkanMemoryAllocator>(m_device, m_physicalDevice);
+    m_memoryAllocator->setDeviceAddressEnabled(m_rtSupported);
     createDescriptorPool();
     createPipelineCache();
 
@@ -137,6 +138,39 @@ VulkanDevice::VulkanDevice(bool enableValidation, const std::vector<const char*>
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     VK_CHECK(vkCreateFence(m_device, &fenceInfo, nullptr, &m_deviceLostCheckFence), "vkCreateFence (device lost check)");
+}
+
+bool VulkanDevice::checkRayTracingSupport() const
+{
+    uint32_t n = 0;
+    vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &n, nullptr);
+    std::vector<VkExtensionProperties> ext(n);
+        vkEnumerateDeviceExtensionProperties(m_physicalDevice, nullptr, &n, ext.data());
+
+    auto has = [&](const char* name) {
+        for (const auto& e : ext)
+            if (std::strcmp(e.extensionName, name) == 0) return true;
+        return false;
+    };
+    if (!has(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) ||
+        !has(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) ||
+        !has(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME))
+        return false;
+
+    VkPhysicalDeviceBufferDeviceAddressFeatures bda{};
+    bda.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR as{};
+    as.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+    as.pNext = &bda;
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt{};
+    rt.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+    rt.pNext = &as;
+    VkPhysicalDeviceFeatures2 f2{};
+    f2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    f2.pNext = &rt;
+    vkGetPhysicalDeviceFeatures2(m_physicalDevice, &f2);
+
+    return rt.rayTracingPipeline && as.accelerationStructure && bda.bufferDeviceAddress;
 }
 
 void VulkanDevice::createPipelineCache()
@@ -314,9 +348,27 @@ void VulkanDevice::createLogicalDevice() {
     queueInfo.queueCount = 1;
     queueInfo.pQueuePriorities = &queuePriority;
 
-    const std::vector<const char*> deviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    };
+    m_rtSupported = checkRayTracingSupport();
+
+    std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
+    VkPhysicalDeviceBufferDeviceAddressFeatures bdaF{};
+    bdaF.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+    bdaF.bufferDeviceAddress = VK_TRUE;
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR asF{};
+    asF.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+    asF.accelerationStructure = VK_TRUE;
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtF{};
+    rtF.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+    rtF.rayTracingPipeline = VK_TRUE;
+
+    if (m_rtSupported) {
+        deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        deviceExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+        deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+        bdaF.pNext = &asF;
+        asF.pNext  = &rtF;
+    }
 
     VkPhysicalDeviceFeatures features{};
     features.fragmentStoresAndAtomics = VK_TRUE;
@@ -326,6 +378,7 @@ void VulkanDevice::createLogicalDevice() {
     createInfo.queueCreateInfoCount = 1;
     createInfo.pQueueCreateInfos = &queueInfo;
     createInfo.pEnabledFeatures = &features;
+    createInfo.pNext = m_rtSupported ? &bdaF : nullptr;
     createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
