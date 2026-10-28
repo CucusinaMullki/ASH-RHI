@@ -154,7 +154,8 @@ bool VulkanDevice::checkRayTracingSupport() const
     };
     if (!has(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) ||
         !has(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) ||
-        !has(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME))
+        !has(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) ||
+        !has(VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME))
         return false;
 
     VkPhysicalDeviceBufferDeviceAddressFeatures bda{};
@@ -162,6 +163,12 @@ bool VulkanDevice::checkRayTracingSupport() const
     VkPhysicalDeviceAccelerationStructureFeaturesKHR as{};
     as.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
     as.pNext = &bda;
+    VkPhysicalDeviceDescriptorIndexingFeatures di{};
+    di.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    bda.pNext = &di;
+    VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR cd{};
+    cd.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_KHR;
+    di.pNext = &cd;
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt{};
     rt.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
     rt.pNext = &as;
@@ -170,7 +177,10 @@ bool VulkanDevice::checkRayTracingSupport() const
     f2.pNext = &rt;
     vkGetPhysicalDeviceFeatures2(m_physicalDevice, &f2);
 
-    return rt.rayTracingPipeline && as.accelerationStructure && bda.bufferDeviceAddress;
+    return rt.rayTracingPipeline && as.accelerationStructure && bda.bufferDeviceAddress &&
+        di.runtimeDescriptorArray && di.shaderSampledImageArrayNonUniformIndexing &&
+        di.descriptorBindingPartiallyBound && di.descriptorBindingVariableDescriptorCount &&
+        cd.computeDerivativeGroupQuads;
 }
 
 void VulkanDevice::createPipelineCache()
@@ -361,17 +371,32 @@ void VulkanDevice::createLogicalDevice() {
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtF{};
     rtF.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
     rtF.rayTracingPipeline = VK_TRUE;
+    VkPhysicalDeviceDescriptorIndexingFeatures diF{};
+    diF.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    diF.runtimeDescriptorArray = VK_TRUE;
+    diF.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+    diF.descriptorBindingPartiallyBound = VK_TRUE;
+    diF.descriptorBindingVariableDescriptorCount = VK_TRUE;
+    VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR cdF{};
+    cdF.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_KHR;
+    cdF.computeDerivativeGroupQuads = VK_TRUE;
 
-    if (m_rtSupported) {
+    if (m_rtSupported)
+    {
         deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
         deviceExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
         deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+        deviceExtensions.push_back(VK_KHR_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME);
         bdaF.pNext = &asF;
         asF.pNext  = &rtF;
+        rtF.pNext  = &diF;
+        diF.pNext  = &cdF;
     }
 
     VkPhysicalDeviceFeatures features{};
     features.fragmentStoresAndAtomics = VK_TRUE;
+    
+    if (m_rtSupported) features.shaderSampledImageArrayDynamicIndexing = VK_TRUE;
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -386,6 +411,16 @@ void VulkanDevice::createLogicalDevice() {
 
     vkGetDeviceQueue(m_device, m_graphicsQueueFamily, 0, &m_graphicsQueue);
 }
+
+ASH::NativeDeviceHandles VulkanDevice::getNativeHandles() const
+{
+    ASH::NativeDeviceHandles h;
+    h.physicalDevice = m_physicalDevice;
+    h.device = m_device;
+    h.graphicsQueue = m_graphicsQueue;
+    h.graphicsFamily = m_graphicsQueueFamily;
+    return h;
+};
 
 VkCommandPool VulkanDevice::getOrCreateCommandPool()
 {

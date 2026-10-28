@@ -89,6 +89,10 @@ enum class Format : uint16_t
     D24_UNorm_S8_UInt,
     D32_Float,
     D32_Float_S8_UInt,
+
+    R8_UInt,
+    R16_UInt,
+    R10G10B10A2_UNorm,
 };
 
 //------------------------

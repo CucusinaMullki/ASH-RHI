@@ -20,7 +20,23 @@ VkMemoryPropertyFlags toMemoryProperties(ASH::MemoryUsage usage) {
     return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 }
 
-} // namespace
+}
+
+uint64_t VulkanBuffer::getDeviceAddress() const
+{
+    const auto u = m_desc.usage;
+    const bool needsAddress = 
+        (u & ASH::BufferUsage::ShaderDeviceAddress) != ASH::BufferUsage::None ||
+        (u & ASH::BufferUsage::AccelerationStructureStorage) != ASH::BufferUsage::None ||
+        (u & ASH::BufferUsage::AccelerationStructureInput) != ASH::BufferUsage::None ||
+        (u & ASH::BufferUsage::ShaderBindingTable) != ASH::BufferUsage::None;
+    if (!needsAddress) return 0;
+
+    VkBufferDeviceAddressInfo info{};
+    info.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    info.buffer = m_buffer;
+    return vkGetBufferDeviceAddress(m_device, &info);
+}
 
 VulkanBuffer::VulkanBuffer(VkDevice device, VulkanMemoryAllocator* allocator, const ASH::BufferDesc& desc)
     : m_device(device)

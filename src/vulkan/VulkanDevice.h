@@ -49,7 +49,8 @@ public:
     VkDescriptorPool getDescriptorPool() const { return m_descriptorPool; }
     VkPipelineCache getPipelineCache() const { return m_pipelineCache; }
     VulkanMemoryAllocator* getMemoryAllocator() const { return m_memoryAllocator.get(); }
-    bool isRayTracingSupported() const { return m_rtSupported; }
+    bool isRayTracingSupported() const override { return m_rtSupported; }
+    ASH::NativeDeviceHandles getNativeHandles() const override;
 
 private:
     void createInstance(bool enableValidation, const std::vector<const char*>& requiredExtensions);

@@ -102,6 +102,8 @@ public:
 
     virtual void barrier(const TextureBarrier* textureBarriers, uint32_t textureBarrierCount, const BufferBarrier* bufferBarriers, uint32_t bufferBarrierCount) = 0;
 
+    virtual void* getNativeHandle() const = 0; 
+
 protected:
     CommandBuffer() = default;
 };

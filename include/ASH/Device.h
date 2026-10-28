@@ -53,6 +53,14 @@ struct SubmitInfo
     Fence* signalFence = nullptr;
 };
 
+struct NativeDeviceHandles
+{
+    void* physicalDevice = nullptr;
+    void* device = nullptr;
+    void* graphicsQueue = nullptr;
+    uint32_t graphicsFamily = 0;
+};
+
 class Device
 {
 public:
@@ -74,6 +82,9 @@ public:
     virtual std::unique_ptr<Sampler> createSampler(const SamplerDesc& desc) = 0;
     virtual std::unique_ptr<Semaphore> createSemaphore() = 0;
     virtual std::unique_ptr<Fence> createFence(bool initiallySignaled) = 0;
+
+    virtual bool isRayTracingSupported() const { return false; }
+    virtual NativeDeviceHandles getNativeHandles() const { return {}; }
 
     virtual void attachSurface(void* nativeSurfaceHandle) = 0;
     virtual void submit(const SubmitInfo& info) = 0;

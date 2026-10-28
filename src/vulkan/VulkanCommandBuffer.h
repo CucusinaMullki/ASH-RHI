@@ -43,11 +43,11 @@ public:
     void copyBufferToTextureRegions(Buffer* src, Texture* dst, const BufferTextureCopyRegion* regions, uint32_t regionCount) override;
     void blitTexture(const ASH::TextureBlitRegion& region) override;
     void copyTexture(ASH::Texture* src, ASH::Texture* dst) override;
+    VkCommandBuffer getHandle() const { return m_commandBuffer; }
+    void* getNativeHandle() const override { return reinterpret_cast<void*>(m_commandBuffer); }
 
     void barrier(const ASH::TextureBarrier* textureBarriers, uint32_t textureBarrierCount,
         const ASH::BufferBarrier*  bufferBarriers,  uint32_t bufferBarrierCount) override;
-
-    VkCommandBuffer getHandle() const { return m_commandBuffer; }
 
 private:
     VkDevice m_device = VK_NULL_HANDLE;

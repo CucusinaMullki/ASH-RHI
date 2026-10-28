@@ -28,6 +28,9 @@ VkFormat toVkFormat(ASH::Format format) {
         case ASH::Format::D32_Float: return VK_FORMAT_D32_SFLOAT;
         case ASH::Format::D32_Float_S8_UInt: return VK_FORMAT_D32_SFLOAT_S8_UINT;
         case ASH::Format::Unknown: return VK_FORMAT_UNDEFINED;
+        case ASH::Format::R8_UInt: return VK_FORMAT_R8_UINT;
+        case ASH::Format::R16_UInt: return VK_FORMAT_R16_UINT;
+        case ASH::Format::R10G10B10A2_UNorm: return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
     }
     return VK_FORMAT_UNDEFINED;
 }
